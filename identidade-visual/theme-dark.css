@@ -1,0 +1,10 @@
+[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0F0F0E;
+  --ink:#F4F2EC;
+  --ink-muted:#A3A199;
+  --rule:#2E2D2A;
+  --red:#FF5470;
+  --blue:#8A9BFF;
+  --on-accent:#0F0F0E;
+}

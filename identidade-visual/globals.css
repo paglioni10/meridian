@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{--surface:var(--paper);--sidebar-w:200px}
+[data-theme="dark"]{--surface:#171716}
+
+@layer base{
+  html{background:var(--paper);color:var(--ink);-webkit-tap-highlight-color:transparent}
+  body{@apply font-sans text-body antialiased min-h-dvh}
+  a{@apply text-secondary hover:text-danger}
+  :focus-visible{@apply outline outline-[3px] outline-offset-2 outline-secondary}
+}
+
+@layer components{
+  .btn{@apply inline-flex min-h-tap items-center justify-center gap-2 border border-border px-4 font-mono text-[12px] font-medium uppercase transition-colors disabled:opacity-40 disabled:pointer-events-none}
+  .btn-primary{@apply btn bg-primary text-primary-foreground hover:border-danger hover:bg-danger hover:text-accent}
+  .btn-secondary{@apply btn bg-background text-foreground hover:bg-foreground hover:text-background}
+  .btn-ghost{@apply btn border-transparent bg-transparent text-foreground hover:border-border}
+  .btn-danger{@apply btn border-danger bg-background text-danger hover:bg-danger hover:text-accent}
+  .btn-icon{@apply btn w-tap px-0}
+
+  .input{@apply min-h-tap w-full border-0 border-b border-border bg-transparent px-3 font-mono text-data text-foreground placeholder:text-muted focus:border-b-[3px] focus:border-secondary focus:outline-none}
+  .input-error{@apply border-danger focus:border-danger}
+  .field-label{@apply font-mono text-label uppercase text-muted}
+  .field-error{@apply font-mono text-label uppercase text-danger}
+
+  .badge{@apply inline-flex items-center gap-1 px-2 py-1 font-mono text-[12px] font-medium uppercase leading-none}
+  .badge-pessoal{@apply badge border border-border text-foreground}
+  .badge-trabalho{@apply badge bg-secondary text-secondary-foreground}
+  .badge-freelance{@apply badge bg-primary text-primary-foreground}
+
+  .card{@apply border-t border-border pt-3}
+  .card-alert{@apply card border-danger}
+  .card-active{@apply card border-secondary}
+  .card-panel{@apply border border-border bg-surface p-4}
+
+  .section-title{@apply border-b border-border pb-1.5 font-display text-h2 font-extrabold}
+  .page-head{@apply flex items-end justify-between gap-4 border-b-3 border-border pb-3}
+  .row{@apply flex items-baseline justify-between gap-3 border-b border-border-soft pb-1.5 font-mono text-data}
+
+  .modal-overlay{@apply fixed inset-0 z-50 flex items-end justify-center bg-background/80 backdrop-blur-overlay md:items-center}
+  .modal{@apply flex max-h-[90dvh] w-full flex-col gap-5 overflow-y-auto border-3 border-border bg-background p-5 shadow-sheet animate-rise md:max-w-lg md:shadow-modal}
+  .modal-title{@apply font-display text-h2 font-extrabold}
+  .modal-actions{@apply flex flex-col-reverse gap-2 sm:flex-row sm:justify-end}
+
+  .goal{@apply flex flex-col gap-1.5}
+  .goal-head{@apply flex items-baseline justify-between gap-3}
+  .goal-name{@apply text-body font-medium}
+  .goal-amount{@apply font-mono text-data text-foreground}
+  .goal-amount-total{@apply text-muted}
+  .goal-track{@apply relative h-1.5 bg-border-soft}
+  .goal-fill{@apply absolute inset-y-0 left-0 bg-primary}
+  .goal-fill-active{@apply bg-secondary}
+  .goal-fill-done{@apply bg-primary}
+  .goal-tick{@apply absolute -top-1 h-3.5 w-px bg-foreground}
+  .goal-foot{@apply flex justify-between font-mono text-label uppercase text-muted}
+
+  .trail{@apply relative flex flex-col gap-6 border-l border-border pl-5}
+  .trail-node{@apply relative before:absolute before:-left-[26px] before:top-1.5 before:h-2.5 before:w-2.5 before:border before:border-border before:bg-background}
+  .trail-node-done{@apply trail-node before:bg-primary}
+  .trail-node-active{@apply trail-node before:border-secondary before:bg-secondary}
+
+  .capture-fab{@apply fixed bottom-[calc(var(--nav-h,64px)+16px)] right-4 z-40 flex h-14 w-14 items-center justify-center border-3 border-border bg-primary font-display text-[28px] font-extrabold text-primary-foreground shadow-modal hover:bg-danger hover:text-accent lg:bottom-8 lg:right-8}
+  .capture-tabs{@apply grid grid-cols-3 border border-border}
+  .capture-tab{@apply min-h-tap font-mono text-[12px] uppercase text-foreground aria-selected:bg-primary aria-selected:text-primary-foreground}
+  .capture-amount{@apply w-full border-0 border-b-3 border-border bg-transparent py-2 font-display text-display font-extrabold text-foreground placeholder:text-border-soft focus:border-secondary focus:outline-none}
+  .kbd{@apply inline-flex h-5 min-w-5 items-center justify-center border border-border px-1 font-mono text-[11px]}
+
+  .dropzone{@apply flex min-h-48 flex-col items-center justify-center gap-2 border border-dashed border-border bg-transparent p-6 text-center transition-colors}
+  .dropzone-over{@apply border-solid border-secondary bg-secondary/10}
+  .dropzone-title{@apply font-display text-h2 font-extrabold}
+  .dropzone-hint{@apply font-mono text-label uppercase text-muted}
+  .dropzone-file{@apply row w-full text-left}
+  .dropzone-error{@apply border-danger text-danger}
+  .dropzone-progress{@apply h-1.5 w-full bg-border-soft}
+  .dropzone-progress>i{@apply block h-full bg-secondary}
+
+  .status{@apply inline-flex items-center gap-2 font-mono text-[12px] font-medium uppercase leading-none}
+  .status-dot{@apply h-2.5 w-2.5 border border-border}
+  .status-online{@apply status}
+  .status-online .status-dot{@apply bg-foreground}
+  .status-offline{@apply status text-danger}
+  .status-offline .status-dot{@apply border-danger bg-danger}
+  .status-warning{@apply status text-danger}
+  .status-warning .status-dot{@apply border-danger bg-transparent animate-pulse}
+  .status-pill{@apply px-2 py-1 text-accent}
+  .status-pill-online{@apply status-pill bg-primary text-primary-foreground}
+  .status-pill-offline{@apply status-pill bg-danger}
+  .status-pill-warning{@apply status-pill border border-danger bg-transparent text-danger}
+  .meter{@apply h-1.5 w-full bg-border-soft}
+  .meter>i{@apply block h-full bg-primary}
+  .meter-warning>i{@apply bg-danger}
+
+  .app-shell{@apply min-h-dvh lg:grid lg:grid-cols-app}
+  .sidebar{@apply hidden border-r border-border px-6 py-7 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-7}
+  .nav-item{@apply flex min-h-8 items-center gap-2 font-mono text-[12px] font-medium text-foreground hover:text-danger aria-[current=page]:text-danger}
+  .main{@apply mx-auto flex w-full max-w-content flex-col gap-6 px-4 pb-[calc(var(--nav-h,64px)+24px)] pt-5 sm:px-6 md:gap-8 lg:px-10 lg:pb-10 lg:pt-7 3xl:px-14}
+  .bottom-nav{@apply fixed inset-x-0 bottom-0 z-40 grid h-nav grid-cols-5 border-t-3 border-border bg-background pb-[env(safe-area-inset-bottom)] lg:hidden}
+  .bottom-nav-item{@apply flex min-h-tap flex-col items-center justify-center gap-0.5 font-mono text-[11px] uppercase text-muted aria-[current=page]:text-danger}
+  .stats-grid{@apply grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 md:gap-8}
+  .panels-grid{@apply grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4}
+  .panel-wide{@apply md:col-span-2}
+  .kanban{@apply grid grid-flow-col auto-cols-[80%] gap-4 overflow-x-auto snap-x snap-mandatory sm:auto-cols-[45%] md:grid-flow-row md:grid-cols-kanban md:auto-cols-auto md:overflow-visible}
+  .kanban-col{@apply flex snap-start flex-col gap-2}
+  .kanban-card{@apply card-panel border-0 border-t p-0 pt-2}
+}
+
+@layer utilities{
+  .nav-h{--nav-h:64px}
+  .safe-top{padding-top:env(safe-area-inset-top)}
+  .safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
+  .scrollbar-none{scrollbar-width:none}
+  .scrollbar-none::-webkit-scrollbar{display:none}
+  .tabular{font-variant-numeric:tabular-nums}
+}

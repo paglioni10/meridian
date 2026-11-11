@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "../identidade-visual/theme-light.css";
+@import "../identidade-visual/theme-dark.css";
+
+@config "../identidade-visual/tailwind.config.js";
+
+@layer base {
+  html {
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply min-h-dvh font-sans text-body antialiased;
+  }
+  a {
+    @apply text-secondary hover:text-danger;
+  }
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-secondary;
+  }
+}

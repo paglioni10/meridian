@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Public+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>body{margin:0;background:#F4F2EC}a{color:#1F3FFF}a:hover{color:#E4002B}</style>
+</helmet>
+<div style="max-width:1100px;margin:0 auto;padding:40px;display:flex;flex-direction:column;gap:48px;font:400 14px/1.5 'Public Sans';color:#111">
+
+<header style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #111;padding-bottom:12px">
+<div style="font:800 44px/1 'Archivo';letter-spacing:-0.03em">Design System</div>
+<div style="font:400 12px 'IBM Plex Mono';color:#5b5b56">Editorial Suíço · v1.0 · tokens.css</div>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="font:800 20px 'Archivo';border-bottom:1px solid #111;padding-bottom:6px">Cor · tema claro · theme-light.css</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:16px">
+<div><div style="height:72px;background:#F4F2EC;border:1px solid #111"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--paper</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">#F4F2EC · fundo</div></div>
+<div><div style="height:72px;background:#111"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--ink</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">#111111 · texto</div></div>
+<div><div style="height:72px;background:#5B5B56"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--ink-muted</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">#5B5B56 · rótulos</div></div>
+<div><div style="height:72px;background:#D9D5C9"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--rule</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">#D9D5C9 · filetes</div></div>
+<div><div style="height:72px;background:#E4002B"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--red</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">#E4002B · alerta</div></div>
+<div><div style="height:72px;background:#1F3FFF"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--blue</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">#1F3FFF · ativo</div></div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="font:800 20px 'Archivo';border-bottom:1px solid #111;padding-bottom:6px">Tipografia</div>
+<div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px 24px;align-items:baseline">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">DISPLAY 56</div><div style="font:800 56px/1.05 'Archivo';letter-spacing:-0.03em">8.420,15</div>
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">H1 44</div><div style="font:800 44px/1 'Archivo';letter-spacing:-0.03em">Segunda, 9 de novembro</div>
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">FIGURA 32</div><div style="font:800 32px/1.2 'Archivo'">5.200,00</div>
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">H2 20</div><div style="font:800 20px 'Archivo'">Trilha de objetivos</div>
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">CORPO 14</div><div style="font:400 14px/1.5 'Public Sans'">Public Sans para texto corrido, descrições e navegação.</div>
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">DADOS 13</div><div style="font:400 13px 'IBM Plex Mono'">07/11 Mercado  −182,40</div>
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">RÓTULO 11</div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">SALDO TOTAL</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="font:800 20px 'Archivo';border-bottom:1px solid #111;padding-bottom:6px">Componentes</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.stat · .stat.alert</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div style="border-top:1px solid #111;padding-top:10px"><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">ENTRADAS · CLT</div><div style="font:800 32px/1.2 'Archivo'">5.200,00</div></div>
+<div style="border-top:1px solid #E4002B;padding-top:10px"><div style="font:400 11px 'IBM Plex Mono';color:#E4002B">A VENCER</div><div style="font:800 32px/1.2 'Archivo';color:#E4002B">3 contas</div></div>
+</div></div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.row</div>
+<div style="display:flex;justify-content:space-between;font:400 13px 'IBM Plex Mono';border-bottom:1px solid #D9D5C9;padding-bottom:6px"><span>07/11 Mercado</span><span>−182,40</span></div>
+<div style="display:flex;justify-content:space-between;font:400 13px 'IBM Plex Mono';border-bottom:1px solid #D9D5C9;padding-bottom:6px"><span>06/11 Cliente Alfa</span><span>+1.900,00</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.progress · .progress.active</div>
+<div><div style="display:flex;justify-content:space-between;font:500 13px 'Public Sans';margin-bottom:4px"><span>Reserva de emergência</span><span style="font:400 12px 'IBM Plex Mono'">72%</span></div><div style="height:6px;background:#D9D5C9"><div style="width:72%;height:6px;background:#111"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;font:500 13px 'Public Sans';margin-bottom:4px"><span>Viagem</span><span style="font:400 12px 'IBM Plex Mono'">15%</span></div><div style="height:6px;background:#D9D5C9"><div style="width:15%;height:6px;background:#1F3FFF"></div></div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.tag</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span style="font:500 12px 'IBM Plex Mono';color:#fff;background:#E4002B;padding:4px 8px">OFFLINE</span>
+<span style="font:500 12px 'IBM Plex Mono';color:#fff;background:#111;padding:4px 8px">ONLINE</span>
+<span style="font:500 12px 'IBM Plex Mono';color:#fff;background:#1F3FFF;padding:4px 8px">EM CURSO</span>
+</div></div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.btn · .btn.primary · .btn.danger</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button style="min-height:44px;padding:0 16px;font:500 12px 'IBM Plex Mono';text-transform:uppercase;border:1px solid #111;background:#F4F2EC;color:#111;cursor:pointer" style-hover="background:#111;color:#F4F2EC">Cancelar</button>
+<button style="min-height:44px;padding:0 16px;font:500 12px 'IBM Plex Mono';text-transform:uppercase;border:1px solid #111;background:#111;color:#F4F2EC;cursor:pointer" style-hover="background:#E4002B;border-color:#E4002B">Importar</button>
+<button style="min-height:44px;padding:0 16px;font:500 12px 'IBM Plex Mono';text-transform:uppercase;border:1px solid #E4002B;background:#F4F2EC;color:#E4002B;cursor:pointer" style-hover="background:#E4002B;color:#fff">Excluir</button>
+</div></div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.input</div>
+<input placeholder="Valor da transação" style="min-height:44px;width:100%;box-sizing:border-box;padding:0 12px;font:400 13px 'IBM Plex Mono';background:transparent;color:#111;border:0;border-bottom:1px solid #111;outline:0" style-focus="border-bottom:3px solid #1F3FFF">
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:400 11px 'IBM Plex Mono';color:#5b5b56">.kanban</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56;margin-bottom:6px">A FAZER</div><div style="border-top:1px solid #111;padding:6px 0">Landing Beta</div></div>
+<div><div style="font:400 11px 'IBM Plex Mono';color:#1F3FFF;margin-bottom:6px">EM CURSO</div><div style="border-top:1px solid #1F3FFF;padding:6px 0">Dashboard Alfa</div></div>
+<div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56;margin-bottom:6px">ENTREGUE</div><div style="border-top:1px solid #111;padding:6px 0">Site Delta</div></div>
+</div></div>
+
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="font:800 20px 'Archivo';border-bottom:1px solid #111;padding-bottom:6px">Filetes e espaçamento</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px">
+<div><div style="border-top:3px solid #111"></div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56;margin-top:6px">--rule-heavy · cabeçalho</div></div>
+<div><div style="border-top:1px solid #111"></div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56;margin-top:6px">--rule-thin · stat, H2, card</div></div>
+<div><div style="border-top:1px solid #D9D5C9"></div><div style="font:400 11px 'IBM Plex Mono';color:#5b5b56;margin-top:6px">--rule-soft · listas</div></div>
+</div>
+<div style="display:flex;gap:12px;align-items:flex-end;font:400 11px 'IBM Plex Mono'">
+<div><div style="width:4px;height:4px;background:#111"></div>4</div><div><div style="width:8px;height:8px;background:#111"></div>8</div><div><div style="width:12px;height:12px;background:#111"></div>12</div><div><div style="width:16px;height:16px;background:#111"></div>16</div><div><div style="width:24px;height:24px;background:#111"></div>24</div><div><div style="width:32px;height:32px;background:#111"></div>32</div><div><div style="width:48px;height:48px;background:#111"></div>48</div>
+</div>
+</section>
+
+<section style="background:#0F0F0E;color:#F4F2EC;padding:32px;display:flex;flex-direction:column;gap:24px">
+<div style="font:800 20px 'Archivo';border-bottom:1px solid #F4F2EC;padding-bottom:6px">Tema escuro · theme-dark.css</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:16px"><div><div style="height:56px;background:#0F0F0E;border:1px solid #F4F2EC33"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--paper</div><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">#0F0F0E</div></div><div><div style="height:56px;background:#F4F2EC;border:1px solid #F4F2EC33"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--ink</div><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">#F4F2EC</div></div><div><div style="height:56px;background:#A3A199;border:1px solid #F4F2EC33"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--ink-muted</div><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">#A3A199</div></div><div><div style="height:56px;background:#2E2D2A;border:1px solid #F4F2EC33"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--rule</div><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">#2E2D2A</div></div><div><div style="height:56px;background:#FF5470;border:1px solid #F4F2EC33"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--red</div><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">#FF5470</div></div><div><div style="height:56px;background:#8A9BFF;border:1px solid #F4F2EC33"></div><div style="font:500 12px 'IBM Plex Mono';margin-top:6px">--blue</div><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">#8A9BFF</div></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:32px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="border-top:1px solid #F4F2EC;padding-top:10px"><div style="font:400 11px 'IBM Plex Mono';color:#A3A199">SALDO TOTAL</div><div style="font:800 56px/1.05 'Archivo';letter-spacing:-0.03em">8.420,15</div></div>
+<div style="border-top:1px solid #FF5470;padding-top:10px"><div style="font:400 11px 'IBM Plex Mono';color:#FF5470">A VENCER · 7 DIAS</div><div style="font:800 32px/1.2 'Archivo';color:#FF5470">3 contas</div></div>
+<div style="display:flex;justify-content:space-between;font:400 13px 'IBM Plex Mono';border-bottom:1px solid #2E2D2A;padding-bottom:6px"><span>07/11 Mercado</span><span>−182,40</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="height:6px;background:#2E2D2A"><div style="width:72%;height:6px;background:#F4F2EC"></div></div>
+<div style="height:6px;background:#2E2D2A"><div style="width:15%;height:6px;background:#8A9BFF"></div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span style="font:500 12px 'IBM Plex Mono';color:#0F0F0E;background:#FF5470;padding:4px 8px">OFFLINE</span>
+<span style="font:500 12px 'IBM Plex Mono';color:#0F0F0E;background:#F4F2EC;padding:4px 8px">ONLINE</span>
+<span style="font:500 12px 'IBM Plex Mono';color:#0F0F0E;background:#8A9BFF;padding:4px 8px">EM CURSO</span></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button style="min-height:44px;padding:0 16px;font:500 12px 'IBM Plex Mono';text-transform:uppercase;border:1px solid #F4F2EC;background:#0F0F0E;color:#F4F2EC;cursor:pointer">Cancelar</button>
+<button style="min-height:44px;padding:0 16px;font:500 12px 'IBM Plex Mono';text-transform:uppercase;border:1px solid #F4F2EC;background:#F4F2EC;color:#0F0F0E;cursor:pointer" style-hover="background:#FF5470;border-color:#FF5470">Importar</button></div>
+<input placeholder="Valor da transação" style="min-height:44px;box-sizing:border-box;padding:0 12px;font:400 13px 'IBM Plex Mono';background:transparent;color:#F4F2EC;border:0;border-bottom:1px solid #F4F2EC;outline:0" style-focus="border-bottom:3px solid #8A9BFF">
+</div></div></section>
+
+<footer style="border-top:3px solid #111;padding-top:12px;font:400 12px 'IBM Plex Mono';color:#5b5b56">Regras: DESIGN_SYSTEM.md · Tokens: tokens.css · Temas: theme-light.css, theme-dark.css</footer>
+</div>
+</x-dc>
+</body>
+</html>

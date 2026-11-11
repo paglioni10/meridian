@@ -1,0 +1,10 @@
+:root,[data-theme="light"]{
+  color-scheme:light;
+  --paper:#F4F2EC;
+  --ink:#111111;
+  --ink-muted:#5B5B56;
+  --rule:#D9D5C9;
+  --red:#E4002B;
+  --blue:#1F3FFF;
+  --on-accent:#FFFFFF;
+}

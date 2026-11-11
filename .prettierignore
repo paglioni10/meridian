@@ -1,0 +1,7 @@
+node_modules
+.next
+supabase/.temp
+identidade-visual
+logo
+package-lock.json
+*.md

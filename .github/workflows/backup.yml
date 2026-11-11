@@ -1,0 +1,46 @@
+name: Backup
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+    steps:
+      - name: Verificar segredos
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$AGE_RECIPIENT" ]; then
+            echo "SUPABASE_DB_URL ou AGE_RECIPIENT ausente"
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: sudo apt-get update && sudo apt-get install -y age
+      - name: Dump
+        run: |
+          mkdir -p dump
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/data.sql --use-copy --data-only
+      - name: Criptografar
+        run: |
+          STAMP=$(date -u +%Y%m%dT%H%MZ)
+          tar -czf - -C dump . | age -r "$AGE_RECIPIENT" -o "meridian-$STAMP.tar.gz.age"
+          rm -rf dump
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: meridian-backup-${{ env.STAMP }}
+          path: meridian-*.tar.gz.age
+          retention-days: 90
+          if-no-files-found: error
