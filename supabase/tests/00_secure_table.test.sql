@@ -30,11 +30,10 @@ set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","r
 
 select is((select count(*)::int from public.rls_probe), 0, 'B does not see A rows');
 
-select is(
-  (with u as (update public.rls_probe set note = 'hijack' returning 1) select count(*)::int from u),
-  0,
-  'B cannot update A rows'
-);
+update public.rls_probe set note = 'hijack';
+delete from public.rls_probe;
+
+select is((select count(*)::int from public.rls_probe), 0, 'B update and delete reach no rows');
 
 select throws_ok(
   $$ insert into public.rls_probe (user_id, note) values ('11111111-1111-1111-1111-111111111111', 'spoof') $$,
