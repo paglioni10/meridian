@@ -27,7 +27,10 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
   }
 
   const email = parsed.data.email.toLowerCase();
-  if (!isAllowedEmail(email, serverEnv().ALLOWED_EMAILS)) return SENT;
+  if (!isAllowedEmail(email, serverEnv().ALLOWED_EMAILS)) {
+    console.warn("[login] e-mail fora de ALLOWED_EMAILS; nenhum link enviado");
+    return SENT;
+  }
 
   const callback = new URL("/auth/callback", publicEnv.NEXT_PUBLIC_SITE_URL);
   callback.searchParams.set("next", safeNextPath(parsed.data.next));
@@ -38,8 +41,15 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
     options: { shouldCreateUser: false, emailRedirectTo: callback.toString() },
   });
 
-  if (error && error.status !== 422) {
-    return { status: "error", message: "Não foi possível enviar o link. Tente novamente em instantes." };
+  if (error) {
+    console.error("[login] signInWithOtp falhou", {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
+    if (error.status !== 422) {
+      return { status: "error", message: "Não foi possível enviar o link. Tente novamente em instantes." };
+    }
   }
   return SENT;
 }
