@@ -1,6 +1,6 @@
 # Meridian · Roadmap de Execução
 
-Plano técnico em 10 fases (F0–F9). Cada fase termina com um deploy em produção na Vercel e só avança quando todos os critérios de aceite estiverem verdes.
+Plano técnico em 12 fases (F0–F11). Cada fase termina com um deploy em produção na Vercel e só avança quando todos os critérios de aceite estiverem verdes.
 
 Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `tailwind.config.js`, `theme-*.css`, `logo/`.
 
@@ -19,17 +19,20 @@ Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `ta
 | F6 | Projetos & Pipeline Freelance (Kanban + CRM) | F1, F3 | 5–6 dias |
 | F7 | Central de Infraestrutura (monitoramento + vencimentos) | F1 | 4–5 dias |
 | F8 | Quick Capture completo + Visão Geral | F2–F7 | 4–5 dias |
-| F9 | PWA, offline, APK (TWA), hardening e release 1.0 | F8 | 4–5 dias |
+| F9 | Grafo de Conexões (Knowledge & Life Graph) | F2, F3, F5, F6, F7, F8 | 5–6 dias |
+| F10 | Ambient Player: Spotify em tempo real | F1 | 4–5 dias |
+| F11 | PWA, offline, APK (TWA), hardening e release 1.0 | F8, F9, F10 | 4–5 dias |
 
 ```
 F0 ─ F1 ─┬─ F2 ───────────────┐
          ├─ F3 ─┬─ F4 ────────┤
-         │      ├─ F5 ────────┼─ F8 ─ F9
-         │      └─ F6 ────────┤
-         └─ F7 ───────────────┘
+         │      ├─ F5 ────────┼─ F8 ─ F9 ─┐
+         │      └─ F6 ────────┤           ├─ F11
+         ├─ F7 ───────────────┘           │
+         └─ F10 ──────────────────────────┘
 ```
 
-F2, F7 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1.
+F2, F7, F10 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F10 (Spotify) está agendada depois do núcleo por prioridade, não por dependência.
 
 ---
 
@@ -53,6 +56,9 @@ F2, F7 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1.
 | Ícone PWA | **Resolvido.** Ícones vêm exclusivamente de `logo/`; DS atualizado. |
 | Repositório | Público em `github.com/paglioni10/meridian`. Nenhum segredo, e-mail ou dado pessoal versionado; tudo em variáveis da Vercel/GitHub Secrets. |
 | Pacotes | `npm` (Node 26 não traz corepack/pnpm). Supabase CLI como devDependency (`npx supabase`). |
+| Grafo | `react-force-graph-2d` (Canvas + `d3-force`), carregado só na rota `/conexoes`. Arestas derivadas das FKs + tabela `entity_links` para conexões manuais (F9). |
+| Integrações OAuth | Tokens de terceiros (Spotify) em `integration_tokens`, sem acesso pelo cliente, criptografados com AES-256-GCM; rotas do servidor usam o client `admin` depois de validar a sessão (F10). |
+| Exceções do DS | Nenhuma por padrão. Grafo usa forma/traço em vez de cores novas; player usa a versão editorial. Exceções só com registro explícito no `DESIGN_SYSTEM.md`. |
 
 ### Estrutura de pastas
 
@@ -1056,7 +1062,649 @@ F2, F3, F4, F5, F6, F7 (destinos da captura e fontes da Visão Geral).
 
 ---
 
-## F9 · PWA, Offline, APK & Release 1.0
+## F9 · Grafo de Conexões (Knowledge & Life Graph)
+
+**Objetivo:** visualizar, numa rede interativa inspirada no Graph View do Obsidian, como cursos, projetos, objetivos, finanças, clientes, servidores e notas se conectam, com física de arrastar, zoom, pan, destaque de vizinhança e um painel lateral para agir sobre cada nó.
+
+**Por que aqui:** o grafo só tem valor quando as entidades existem. As tabelas de cursos (F2), ganhos (F3), objetivos (F5), projetos/clientes/deals (F6) e serviços (F7) precisam estar no banco, e a Visão Geral (F8) já consolida os dados. As views do grafo referenciam essas tabelas, então a migration só pode rodar depois delas.
+
+### Modelo de dados
+
+Abordagem híbrida:
+- **Arestas derivadas**, calculadas a partir das chaves estrangeiras que já existem (curso → nota, deal → cliente, projeto → deal, fonte de renda → deal). Não exigem nenhuma ação manual.
+- **Arestas manuais** em `entity_links`, para relações que o esquema não captura (curso “aplicado em” projeto, objetivo “financiado por” fonte de renda, nota “documenta” servidor).
+
+Notas do Obsidian viram entidade própria (`obsidian_notes`), registradas automaticamente quando um curso referencia uma nota, para que toda aresta ligue dois UUIDs.
+
+Como a ligação é polimórfica (o tipo da ponta varia), não existe FK nativa: um gatilho valida que as duas pontas existem e pertencem ao mesmo usuário, e gatilhos de exclusão removem as arestas órfãs.
+
+```sql
+create type public.entity_type as enum ('course', 'project', 'goal', 'income_source', 'client', 'deal', 'service', 'note');
+
+create table public.obsidian_notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  path text not null check (length(path) between 1 and 300),
+  title text generated always as (regexp_replace(path, '^.*/', '')) stored,
+  created_at timestamptz not null default now(),
+  unique (user_id, path)
+);
+
+create table public.entity_links (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  source_type public.entity_type not null,
+  source_id uuid not null,
+  target_type public.entity_type not null,
+  target_id uuid not null,
+  label text check (label is null or length(btrim(label)) between 1 and 40),
+  created_at timestamptz not null default now(),
+  check (not (source_type = target_type and source_id = target_id)),
+  unique (user_id, source_type, source_id, target_type, target_id)
+);
+
+create index entity_links_source_idx on public.entity_links (user_id, source_type, source_id);
+create index entity_links_target_idx on public.entity_links (user_id, target_type, target_id);
+
+create or replace function private.entity_links_validate()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_end record;
+  v_found boolean;
+begin
+  for v_end in select * from (values (new.source_type, new.source_id), (new.target_type, new.target_id)) as e(kind, id) loop
+    execute format(
+      'select exists (select 1 from public.%I where id = $1 and user_id = $2)',
+      case v_end.kind
+        when 'course' then 'courses'
+        when 'project' then 'projects'
+        when 'goal' then 'goals'
+        when 'income_source' then 'income_sources'
+        when 'client' then 'clients'
+        when 'deal' then 'deals'
+        when 'service' then 'services'
+        when 'note' then 'obsidian_notes'
+      end
+    ) into v_found using v_end.id, new.user_id;
+    if not v_found then
+      raise exception 'entity % % not found', v_end.kind, v_end.id using errcode = '23503';
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+create trigger entity_links_validate
+  before insert or update on public.entity_links
+  for each row execute function private.entity_links_validate();
+
+create or replace function private.entity_links_cleanup()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  delete from public.entity_links
+  where user_id = old.user_id
+    and (
+      (source_type = tg_argv[0]::public.entity_type and source_id = old.id)
+      or (target_type = tg_argv[0]::public.entity_type and target_id = old.id)
+    );
+  return old;
+end;
+$$;
+
+create trigger courses_links_cleanup after delete on public.courses
+  for each row execute function private.entity_links_cleanup('course');
+create trigger projects_links_cleanup after delete on public.projects
+  for each row execute function private.entity_links_cleanup('project');
+create trigger goals_links_cleanup after delete on public.goals
+  for each row execute function private.entity_links_cleanup('goal');
+create trigger income_sources_links_cleanup after delete on public.income_sources
+  for each row execute function private.entity_links_cleanup('income_source');
+create trigger clients_links_cleanup after delete on public.clients
+  for each row execute function private.entity_links_cleanup('client');
+create trigger deals_links_cleanup after delete on public.deals
+  for each row execute function private.entity_links_cleanup('deal');
+create trigger services_links_cleanup after delete on public.services
+  for each row execute function private.entity_links_cleanup('service');
+create trigger obsidian_notes_links_cleanup after delete on public.obsidian_notes
+  for each row execute function private.entity_links_cleanup('note');
+
+create or replace function private.courses_register_note()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.obsidian_note is not null then
+    insert into public.obsidian_notes (user_id, path)
+    values (new.user_id, new.obsidian_note)
+    on conflict (user_id, path) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger courses_register_note
+  after insert or update of obsidian_note on public.courses
+  for each row execute function private.courses_register_note();
+
+create view public.v_graph_nodes with (security_invoker = true) as
+select 'course'::public.entity_type as type, id, user_id, title as label, context::text as context, status::text as state from public.courses
+union all
+select 'project', id, user_id, name, context::text, status::text from public.projects
+union all
+select 'goal', id, user_id, title, context::text, status::text from public.goals
+union all
+select 'income_source', id, user_id, name, context::text, case when active then 'active' else 'inactive' end from public.income_sources
+union all
+select 'client', id, user_id, name, 'freelance', null from public.clients
+union all
+select 'deal', id, user_id, title, 'freelance', stage::text from public.deals
+union all
+select 'service', id, user_id, name, context::text, last_state::text from public.services
+union all
+select 'note', id, user_id, title, null, null from public.obsidian_notes;
+
+create view public.v_graph_edges with (security_invoker = true) as
+select user_id, source_type, source_id, target_type, target_id, label, 'manual' as origin, id as link_id
+from public.entity_links
+union all
+select c.user_id, 'course', c.id, 'note', n.id, 'nota', 'derived', null
+from public.courses c
+join public.obsidian_notes n on n.user_id = c.user_id and n.path = c.obsidian_note
+union all
+select user_id, 'deal', id, 'client', client_id, 'cliente', 'derived', null
+from public.deals
+union all
+select user_id, 'project', id, 'deal', deal_id, 'origem', 'derived', null
+from public.projects
+where deal_id is not null
+union all
+select i.user_id, 'income_source', i.source_id, 'deal', d.id, 'receita', 'derived', null
+from public.deals d
+join public.incomes i on i.id = d.income_id;
+
+create or replace function public.graph_snapshot(p_context text default 'all')
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  with nodes as (
+    select type, id, label, context, state
+    from public.v_graph_nodes
+    where p_context = 'all' or context is null or context = p_context
+  ),
+  edges as (
+    select e.*
+    from public.v_graph_edges e
+    join nodes s on s.type = e.source_type and s.id = e.source_id
+    join nodes t on t.type = e.target_type and t.id = e.target_id
+  )
+  select jsonb_build_object(
+    'nodes', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', type || ':' || id, 'type', type, 'entityId', id,
+        'label', label, 'context', context, 'state', state
+      )) from nodes
+    ), '[]'::jsonb),
+    'links', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'source', source_type || ':' || source_id, 'target', target_type || ':' || target_id,
+        'label', label, 'origin', origin, 'linkId', link_id
+      )) from edges
+    ), '[]'::jsonb)
+  );
+$$;
+
+create or replace function public.search_entities(p_query text, p_limit int default 12)
+returns table (type public.entity_type, id uuid, label text, context text)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select type, id, label, context
+  from public.v_graph_nodes
+  where label ilike '%' || p_query || '%'
+  order by position(lower(p_query) in lower(label)), length(label)
+  limit least(greatest(p_limit, 1), 50);
+$$;
+
+select private.secure_table('public.obsidian_notes', false);
+select private.secure_table('public.entity_links', false);
+
+grant select, insert, delete on public.obsidian_notes to authenticated;
+grant select, insert, update, delete on public.entity_links to authenticated;
+grant select on public.v_graph_nodes, public.v_graph_edges to authenticated;
+grant execute on function public.graph_snapshot(text), public.search_entities(text, int) to authenticated;
+```
+
+### Codificação visual (dentro do Design System)
+
+O DS só permite tinta, azul (ativo/foco), vermelho (alerta) e cinza (secundário), e proíbe criar cores novas. Por isso o **tipo** do nó é diferenciado por **forma**, o **contexto** por **traço** e a **importância** por **tamanho**. A cor fica com o significado que já tem no resto do app.
+
+| Atributo | Codificação |
+|---|---|
+| Curso | círculo |
+| Projeto | quadrado |
+| Objetivo | triângulo |
+| Fonte de renda, cliente, deal (finanças/CRM) | losango |
+| Servidor | hexágono |
+| Nota do Obsidian | círculo vazado |
+| Contexto Pessoal / Trabalho / Freelance | contorno contínuo / tracejado / pontilhado |
+| Tamanho | `1 + grau` (nós mais conectados ficam maiores) |
+| Cor padrão | `--ink`; aresta em `--rule` |
+| Hover e seleção | nó e vizinhos em `--blue`, arestas da vizinhança em `--blue` com 2px, resto em `--ink-muted` |
+| Alerta | `--red` para objetivo atrasado, serviço offline ou renovação vencida |
+| Rótulo | IBM Plex Mono 11px, exibido a partir de zoom 1,5× ou no hover |
+
+Se você preferir cores por contexto mesmo assim, é preciso registrar uma exceção no DS (ex.: três tons de cinza ou a paleta só no grafo). Recomendo manter forma + traço.
+
+### Estrutura do componente
+
+Biblioteca: `react-force-graph-2d` (Canvas + `d3-force`, arrasto com física, zoom/pan com mouse e pinça, hover). Carregada com `next/dynamic` e `ssr: false`, somente na rota do grafo, para não pesar nas outras telas.
+
+```
+app/(app)/conexoes/
+├─ page.tsx
+├─ graph-view.tsx
+├─ graph-canvas.tsx
+├─ graph-toolbar.tsx
+├─ graph-legend.tsx
+├─ graph-list.tsx
+├─ node-drawer.tsx
+└─ link-picker.tsx
+features/graph/
+├─ actions.ts
+├─ queries.ts
+├─ schema.ts
+├─ draw-node.ts
+├─ neighbors.ts
+└─ use-graph-theme.ts
+```
+
+| Arquivo | Papel |
+|---|---|
+| `page.tsx` | Server Component: `PageHead` + `Suspense` com o snapshot do contexto ativo |
+| `graph-view.tsx` | Client: estado de seleção, filtros por tipo, busca, alternância Grafo/Lista |
+| `graph-canvas.tsx` | Client: `ForceGraph2D`, desenho dos nós, hover, clique, arrasto |
+| `graph-toolbar.tsx` | Filtros por tipo, busca de nó (centraliza e destaca), botão “Reorganizar” |
+| `graph-legend.tsx` | Legenda de formas e traços |
+| `graph-list.tsx` | Alternativa acessível: lista de nós e conexões navegável por teclado |
+| `node-drawer.tsx` | Painel lateral (desktop) / bottom sheet (mobile) com detalhes, conexões e ações |
+| `link-picker.tsx` | Busca de entidades (`search_entities`) para criar uma conexão com rótulo |
+| `features/graph/actions.ts` | Server Actions `createLink`, `deleteLink` com Zod |
+| `features/graph/queries.ts` | `getGraphSnapshot(context)` via `rpc('graph_snapshot')` |
+| `use-graph-theme.ts` | Lê os tokens de cor do `:root` e relê quando o tema muda (Canvas não entende `var()`) |
+
+```tsx
+export default function ConnectionsPage() {
+  return (
+    <>
+      <PageHead title="Conexões" meta="Cursos, projetos, objetivos, finanças, servidores e notas" />
+      <Suspense fallback={<GraphSkeleton />}>
+        <Graph />
+      </Suspense>
+    </>
+  );
+}
+
+async function Graph() {
+  const context = await getActiveContext();
+  const [snapshot, settings] = await Promise.all([getGraphSnapshot(context), getSettings()]);
+  return <GraphView data={snapshot} vault={settings.obsidian_vault} />;
+}
+```
+
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
+import { drawNode } from "@/features/graph/draw-node";
+import { neighborhood } from "@/features/graph/neighbors";
+import type { GraphData, GraphNode } from "@/features/graph/schema";
+import { useGraphTheme } from "@/features/graph/use-graph-theme";
+
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
+
+export function GraphCanvas({
+  data,
+  selectedId,
+  onSelect,
+  reducedMotion,
+}: {
+  data: GraphData;
+  selectedId: string | null;
+  onSelect: (node: GraphNode) => void;
+  reducedMotion: boolean;
+}) {
+  const theme = useGraphTheme();
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const focus = useMemo(() => neighborhood(data, hoverId ?? selectedId), [data, hoverId, selectedId]);
+
+  return (
+    <ForceGraph2D
+      graphData={data}
+      backgroundColor={theme.paper}
+      nodeRelSize={4}
+      nodeVal={(node: GraphNode) => 1 + node.degree}
+      nodeCanvasObject={(node: GraphNode, ctx: CanvasRenderingContext2D, scale: number) =>
+        drawNode(node, ctx, scale, theme, focus)
+      }
+      nodePointerAreaPaint={(node: GraphNode, color: string, ctx: CanvasRenderingContext2D) =>
+        drawNode(node, ctx, 1, { ...theme, ink: color, blue: color, muted: color, red: color }, null)
+      }
+      linkColor={(link) => (focus?.links.has(link) ? theme.blue : theme.rule)}
+      linkWidth={(link) => (focus?.links.has(link) ? 2 : 1)}
+      onNodeHover={(node: GraphNode | null) => setHoverId(node?.id ?? null)}
+      onNodeClick={onSelect}
+      warmupTicks={reducedMotion ? 300 : 0}
+      cooldownTicks={reducedMotion ? 0 : 150}
+      enableNodeDrag
+    />
+  );
+}
+```
+
+### Painel do nó (Drawer)
+
+- Abre ao clicar ou ao pressionar Enter num item da lista; fecha com Esc e devolve o foco.
+- Mostra tipo, contexto, estado (com `--red` + texto quando em alerta) e os campos principais da entidade.
+- Lista as conexões agrupadas por rótulo; as manuais têm botão para remover.
+- Ações:
+  - **Abrir no módulo** (`/cursos`, `/projetos`, `/objetivos`, `/financas`, `/freelance`, `/infra`);
+  - **Abrir no Obsidian** para notas e para cursos com nota, via `obsidianUri(vault, path)`;
+  - **Conectar a…**, que abre o `LinkPicker` com busca e rótulo opcional.
+- A navegação ganha o item `08 Conexões` na sidebar e entra em “Mais” no mobile.
+
+### Critérios de aceite
+- pgTAP:
+  - criar conexão para entidade de outro usuário falha com `23503`;
+  - autoconexão é rejeitada;
+  - conexão duplicada é rejeitada;
+  - excluir um curso remove suas conexões;
+  - usuário B não vê nós nem arestas de A.
+- Arestas derivadas aparecem sem ação manual (curso com nota, deal com cliente, projeto com deal, ganho com deal).
+- 500 nós e 1.500 arestas: layout estabiliza em menos de 3 s; interação a pelo menos 50 fps no desktop e 30 fps num Android intermediário.
+- Arrastar nó, zoom (roda e pinça), pan e hover destacando a vizinhança funcionam com mouse e toque.
+- Clique abre o painel; em nó de nota, “Abrir no Obsidian” dispara o `obsidian://` correto.
+- Troca de tema atualiza as cores do Canvas sem recarregar.
+- O alternador de contexto global filtra o grafo; notas (sem contexto) aparecem só quando ligadas a nós visíveis.
+- A visão Lista expõe os mesmos dados e é navegável só por teclado; com `prefers-reduced-motion` o layout é pré-calculado e não anima.
+- A biblioteca do grafo não aparece no bundle de outras rotas (verificado no relatório de build).
+
+### Dependências
+F2, F3, F5, F6, F7 (entidades) e F8 (Visão Geral, onde entra um mini-grafo dos nós mais conectados).
+
+---
+
+## F10 · Ambient Player (Spotify em tempo real)
+
+**Objetivo:** detectar o que sua conta do Spotify está tocando em qualquer dispositivo e mostrar um mini-player discreto no Meridian (desktop e PWA), com trilha de progresso fluida e controles rápidos.
+
+**Por que aqui:** é independente dos módulos de dados e depende só do shell (F1). Fica depois do núcleo para não atrasar finanças e projetos, e antes da F11 para que o comportamento no PWA instalado (barra fixa, área segura, retomada ao voltar do segundo plano) seja validado junto com o release. Se quiser antecipar, pode correr em paralelo a partir da F1.
+
+### Pré-requisitos e limites da Spotify (verificados em 2026)
+- Desde fevereiro de 2026, o **modo desenvolvimento exige Spotify Premium do dono do app** e aceita no máximo **5 usuários autorizados**. Para uso pessoal isso basta.
+- Controles (tocar, pausar, pular, buscar posição) também exigem **conta Premium** do usuário que está ouvindo. Com conta Free o widget funciona só em modo leitura.
+- URIs de redirecionamento não aceitam `localhost`. Em desenvolvimento, use `http://127.0.0.1:3000/api/spotify/callback`; em produção, `https://meridian-seven-self.vercel.app/api/spotify/callback`.
+- Salvar e checar faixa curtida usa os endpoints unificados `PUT/DELETE /v1/me/library` e `GET /v1/me/library/contains`, que recebem URIs. `/me/tracks` foi removido em fevereiro de 2026.
+- No início da fase, um teste rápido confirma que os endpoints do player (`/v1/me/player*`) estão liberados para um Client ID novo em modo desenvolvimento, antes de construir o restante.
+
+### Rotas (Route Handlers, App Router)
+
+Todas verificam a sessão do Supabase (401 sem sessão), rodam no Node.js, respondem com `Cache-Control: no-store` e nunca expõem tokens ao cliente.
+
+| Rota | Método | Chamada à Spotify |
+|---|---|---|
+| `/api/spotify/login` | GET | Redireciona para `accounts.spotify.com/authorize` com `state` aleatório em cookie `httpOnly` |
+| `/api/spotify/callback` | GET | Valida `state`, troca `code` em `POST /api/token` e grava os tokens criptografados |
+| `/api/spotify/now-playing` | GET | `GET /v1/me/player?additional_types=track,episode` + `GET /v1/me/library/contains?uris=` |
+| `/api/spotify/play-pause` | POST | `PUT /v1/me/player/play` ou `PUT /v1/me/player/pause` conforme o estado |
+| `/api/spotify/next` | POST | `POST /v1/me/player/next` |
+| `/api/spotify/previous` | POST | `POST /v1/me/player/previous` |
+| `/api/spotify/seek` | POST | `PUT /v1/me/player/seek?position_ms=` |
+| `/api/spotify/like` | POST / DELETE | `PUT` / `DELETE /v1/me/library?uris=` |
+| `/api/spotify/disconnect` | POST | Apaga a linha de tokens do usuário |
+
+Escopos: `user-read-playback-state user-read-currently-playing user-modify-playback-state user-library-read user-library-modify`.
+
+Variáveis na Vercel (Secret): `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`, `TOKEN_ENCRYPTION_KEY` (32 bytes em base64, `openssl rand -base64 32`).
+
+### Armazenamento dos tokens
+
+O `refresh_token` fica numa tabela que **nenhum papel do cliente acessa**: RLS forçada, sem políticas e sem grants para `anon`/`authenticated`. Só as rotas do servidor leem e escrevem, com o client `admin`, depois de validar a sessão. Os tokens são criptografados com AES-256-GCM (`TOKEN_ENCRYPTION_KEY`) antes de gravar, então nem um dump do banco os expõe.
+
+```sql
+create table public.integration_tokens (
+  user_id uuid not null references auth.users on delete cascade,
+  provider text not null check (provider in ('spotify')),
+  account_id text,
+  account_name text,
+  is_premium boolean,
+  scopes text[] not null default '{}',
+  refresh_token_enc text not null,
+  access_token_enc text,
+  access_expires_at timestamptz,
+  needs_reauth boolean not null default false,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, provider)
+);
+
+alter table public.integration_tokens enable row level security;
+alter table public.integration_tokens force row level security;
+revoke all on public.integration_tokens from anon, authenticated;
+
+create trigger integration_tokens_updated_at
+  before update on public.integration_tokens
+  for each row execute function private.set_updated_at();
+```
+
+### Fluxo de renovação do token
+1. Toda rota chama `getSpotifyAccessToken(userId)`.
+2. Se o `access_token` guardado vale por mais de 60 s, ele é usado.
+3. Senão, faz `POST /api/token` com `grant_type=refresh_token` e autenticação Basic (`client_id:client_secret`).
+4. Grava o novo `access_token` e `access_expires_at`. Se a Spotify devolver um `refresh_token` novo (rotação), substitui o antigo.
+5. Em `invalid_grant`, relê a linha: se outra requisição já girou o token nesse meio-tempo, tenta de novo uma vez com o token novo. Se não, marca `needs_reauth` e o widget mostra “Reconectar Spotify” em Ajustes.
+
+```ts
+import "server-only";
+import { decrypt, encrypt } from "@/lib/crypto";
+import { spotifyEnv } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export class SpotifyNotConnected extends Error {}
+
+type TokenRow = { refresh_token_enc: string; access_token_enc: string | null; access_expires_at: string | null };
+
+async function readRow(userId: string): Promise<TokenRow | null> {
+  const { data } = await createAdminClient()
+    .from("integration_tokens")
+    .select("refresh_token_enc, access_token_enc, access_expires_at")
+    .eq("user_id", userId)
+    .eq("provider", "spotify")
+    .eq("needs_reauth", false)
+    .maybeSingle();
+  return data;
+}
+
+async function refresh(userId: string, row: TokenRow, retried = false): Promise<string> {
+  const { clientId, clientSecret } = spotifyEnv();
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: decrypt(row.refresh_token_enc) }),
+    cache: "no-store",
+  });
+
+  if (res.status === 400) {
+    const latest = await readRow(userId);
+    if (!retried && latest && latest.refresh_token_enc !== row.refresh_token_enc) {
+      return refresh(userId, latest, true);
+    }
+    await createAdminClient()
+      .from("integration_tokens")
+      .update({ needs_reauth: true })
+      .eq("user_id", userId)
+      .eq("provider", "spotify");
+    throw new SpotifyNotConnected();
+  }
+  if (!res.ok) throw new Error(`spotify_token_${res.status}`);
+
+  const token = (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
+  await createAdminClient()
+    .from("integration_tokens")
+    .update({
+      access_token_enc: encrypt(token.access_token),
+      access_expires_at: new Date(Date.now() + token.expires_in * 1000).toISOString(),
+      ...(token.refresh_token ? { refresh_token_enc: encrypt(token.refresh_token) } : {}),
+    })
+    .eq("user_id", userId)
+    .eq("provider", "spotify");
+  return token.access_token;
+}
+
+export async function getSpotifyAccessToken(userId: string): Promise<string> {
+  const row = await readRow(userId);
+  if (!row) throw new SpotifyNotConnected();
+  const expiresAt = row.access_expires_at ? Date.parse(row.access_expires_at) : 0;
+  if (row.access_token_enc && expiresAt - Date.now() > 60_000) return decrypt(row.access_token_enc);
+  return refresh(userId, row);
+}
+```
+
+```ts
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth";
+import { toNowPlaying, type NowPlaying } from "@/features/spotify/now-playing";
+import { getSpotifyAccessToken, SpotifyNotConnected } from "@/features/spotify/token";
+
+const NO_STORE = { "Cache-Control": "no-store" };
+
+function reply(body: NowPlaying, status = 200) {
+  return NextResponse.json(body, { status, headers: NO_STORE });
+}
+
+export async function GET() {
+  const user = await getSessionUser();
+  if (!user) return reply({ state: "unauthorized" }, 401);
+
+  try {
+    const token = await getSpotifyAccessToken(user.id);
+    const res = await fetch("https://api.spotify.com/v1/me/player?additional_types=track,episode", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (res.status === 204) return reply({ state: "idle" });
+    if (res.status === 429) return reply({ state: "throttled", retryAfter: Number(res.headers.get("Retry-After") ?? 30) });
+    if (!res.ok) return reply({ state: "error" }, 502);
+    return reply(await toNowPlaying(await res.json(), token));
+  } catch (error) {
+    if (error instanceof SpotifyNotConnected) return reply({ state: "disconnected" });
+    throw error;
+  }
+}
+```
+
+### Atualização no cliente
+
+`useNowPlaying()` faz polling adaptativo e `useTrackProgress()` interpola o tempo localmente:
+
+| Situação | Intervalo |
+|---|---|
+| Tocando, aba visível | 4 s |
+| Pausado | 15 s |
+| Nada tocando / Spotify inativo | 30 s |
+| Aba oculta ou app em segundo plano | pausa; consulta imediata ao voltar (`visibilitychange`) |
+| `429` da Spotify | espera `Retry-After` |
+| Faixa perto do fim | consulta extra em `duração − progresso + 500 ms` |
+
+- Entre as consultas, o progresso avança localmente a cada 1 s a partir de `progressMs + (agora − fetchedAt)`, limitado à duração. A barra anda fluida sem chamar a API.
+- Cada ação (tocar, pausar, pular, curtir, buscar) atualiza o estado na hora e faz uma nova consulta 400 ms depois para confirmar. Se a Spotify responder `403 PREMIUM_REQUIRED`, os controles são escondidos.
+- Custo estimado: com 8 h por dia de música e a aba visível, são cerca de 7.200 chamadas por dia (≈ 216 mil por mês), dentro da franquia de funções do plano Hobby. Confirmar no painel de Usage da Vercel na primeira semana.
+
+### Interface
+
+**Conflito com o Design System.** A especificação pede cantos arredondados, capa do álbum como fundo desfocado (`backdrop-blur`) e overlay escuro. O DS do Meridian proíbe as três coisas: raio 0, blur só no overlay de modal e nenhuma imagem decorativa. Por isso a proposta abaixo é a **versão editorial**, que mantém a hierarquia do player do Android (capa, título, artista, dispositivo, trilha, controles) com a linguagem do Meridian. Se você quiser o visual do Android, a alternativa é registrar no DS uma **exceção restrita ao widget de mídia** (raio 12px, capa desfocada com overlay `--paper` a 80%).
+
+| Elemento | Especificação (versão editorial) |
+|---|---|
+| Capa | Quadrada, 48px (sidebar) / 40px (barra mobile) / 160px (bottom sheet), sem borda arredondada |
+| Título | Public Sans 14px 500, uma linha com reticências |
+| Artista · dispositivo | Rótulo IBM Plex Mono 11px maiúsculo, `--ink-muted`, ex.: `DAFT PUNK · IPHONE` |
+| Trilha | `.progress.progress-active` (6px, azul); arrastável com `role="slider"`, setas ±10 s, Home/End |
+| Tempo | IBM Plex Mono 11px, `01:03 / 03:50`, `tabular-nums` |
+| Controles | Anterior, Tocar/Pausar, Próxima, Curtir; alvos de 44px; ícones SVG funcionais em `--ink`; Curtir ativo em `--blue` com `aria-pressed` |
+| Borda | Filete superior 1px `--ink` (sidebar) / `border-t-3` (barra mobile), sem sombra |
+
+**Desktop (≥1024px):** bloco fixo na base da sidebar (200px), acima de “Ajustes”.
+- Tocando ou pausado: capa + título + artista + trilha + tempo + controles.
+- Nada tocando: uma linha `SPOTIFY · INATIVO` em rótulo.
+- Desconectado: não aparece. A conexão fica em Ajustes.
+
+**Mobile e PWA (<1024px):** barra de 56px fixa logo acima da barra inferior.
+- Posição: `bottom: calc(var(--nav-h) + env(safe-area-inset-bottom))`.
+- Conteúdo: capa 40px, título/artista, botão Tocar/Pausar e a trilha como linha de 2px na borda superior.
+- Toque na barra: abre um bottom sheet (`Dialog`) com capa grande, trilha arrastável e todos os controles.
+- Variável `--player-h`: soma no `padding-bottom` do `.main` e no deslocamento do botão de captura rápida, para nada ficar coberto.
+- Nada tocando ou desconectado: a barra some.
+
+**Acessibilidade:**
+- Botões com `aria-label` (“Tocar”, “Pausar”, “Próxima faixa”, “Faixa anterior”, “Salvar na biblioteca”).
+- A trilha anuncia `aria-valuetext="1 min 3 s de 3 min 50 s"`.
+- Mudança de faixa é anunciada numa região `aria-live="polite"`.
+- Nenhuma animação de texto rolando.
+
+**Ajustes:** seção “Spotify” com “Conectar Spotify”, conta conectada, aviso “Controles exigem Premium” quando for o caso e “Desconectar”.
+
+```
+components/player/
+├─ ambient-player.tsx
+├─ player-sidebar.tsx
+├─ player-bar.tsx
+├─ player-sheet.tsx
+├─ player-controls.tsx
+├─ track-progress.tsx
+└─ icons.tsx
+features/spotify/
+├─ token.ts
+├─ api.ts
+├─ now-playing.ts
+├─ use-now-playing.ts
+└─ use-track-progress.ts
+lib/crypto.ts
+```
+
+### Critérios de aceite
+- Conectar pela tela de Ajustes, fechar o navegador e voltar dias depois continua funcionando sem login manual (renovação automática testada forçando `access_expires_at` no passado).
+- Refresh token rotacionado é gravado; duas renovações simultâneas não desconectam a conta (teste com requisições paralelas).
+- Token revogado na conta Spotify vira “Reconectar Spotify” em Ajustes, sem erro na interface.
+- Nenhum token aparece no bundle do cliente, nas respostas das rotas, nos logs ou em texto puro no banco (verificado com `select` direto).
+- Tocar no celular faz o widget aparecer no desktop em até 5 s; pausar reflete em até 15 s.
+- A trilha avança a cada segundo sem chamada extra; o tempo fica a até 1 s do Spotify após 3 min.
+- Tocar/Pausar, Anterior, Próxima, Curtir e buscar posição funcionam com conta Premium; com conta Free os controles somem e o widget fica só leitura.
+- Aba em segundo plano não faz polling (verificado na aba Network); ao voltar, atualiza na hora.
+- No PWA instalado (Android e iOS), a barra respeita a área segura, não cobre conteúdo nem o botão de captura, e o bottom sheet fecha com gesto e com Esc.
+- Funciona nos temas claro e escuro; nada tocando: some no mobile e vira uma linha na sidebar.
+
+### Dependências
+F1 (shell, Ajustes, Dialog). Pode correr em paralelo a qualquer fase depois da F1.
+
+---
+
+## F11 · PWA, Offline, APK & Release 1.0
 
 **Objetivo:** app instalável sem barra de navegação, utilizável com rede instável, empacotável como APK e endurecido para uso diário.
 
@@ -1096,9 +1744,11 @@ share_target: {
 - APK assinado instalado sem barra de URL (Digital Asset Links verificado).
 - Suíte E2E completa verde em Chromium e WebKit mobile.
 - Restauração completa a partir do backup semanal testada.
+- Grafo (F9) e player (F10) validados no app instalado: gestos de pinça e arrasto no grafo, barra do player acima da navegação inferior e retomada do polling ao voltar do segundo plano.
+- CSP libera `i.scdn.co` em `img-src` para as capas do Spotify e mantém as chamadas à Spotify só no servidor.
 
 ### Dependências
-F8.
+F8, F9, F10.
 
 ---
 
@@ -1126,3 +1776,8 @@ F8.
 | VPS compartilhada com projeto de cliente | Meridian não hospeda nada nela; só monitora e usa o n8n como canal de alerta. Dados do servidor (IP, hostname) ficam no banco, nunca no repositório |
 | Acesso SSH por senha como root na VPS | Endurecimento descrito em `docs/VPS.md` antes da F7 |
 | Meridian fora do ar sem ninguém perceber | Watchdog externo no n8n chamando `/api/health` |
+| Spotify muda regras do modo desenvolvimento (Premium do dono, 5 usuários, endpoints removidos) | Teste rápido dos endpoints do player no início da F10; widget degrada para modo leitura ou some sem quebrar o app |
+| Conta Spotify Free | Controles escondidos em `403 PREMIUM_REQUIRED`; só leitura do que está tocando |
+| Vazamento do refresh token do Spotify | Tabela sem acesso pelo cliente, criptografia AES-256-GCM, chave só na Vercel, rotação gravada a cada renovação |
+| Polling consumindo a franquia da Vercel | Polling adaptativo, pausa com a aba oculta, respeito ao `Retry-After`; acompanhamento no painel de Usage |
+| Grafo lento em celular | Limite de nós por filtro de contexto/tipo, `cooldownTicks`, rótulos só a partir de zoom 1,5× e visão Lista como alternativa |
