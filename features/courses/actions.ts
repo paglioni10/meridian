@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { COURSE_STATUSES, courseInputSchema, type CourseField } from "./schema";
+import { COURSE_STATUSES, courseInputSchema, normalizeCourseLinks, type CourseField } from "./schema";
 
 export type CourseFormState = {
   status: "idle" | "saved" | "error";
@@ -27,7 +27,7 @@ async function resolveCategoryId(name: string | null): Promise<string | null> {
 }
 
 export async function saveCourse(_prev: CourseFormState, formData: FormData): Promise<CourseFormState> {
-  const raw: Record<string, string> = Object.fromEntries(
+  const submitted: Record<string, string> = Object.fromEntries(
     [
       "id",
       "title",
@@ -42,6 +42,7 @@ export async function saveCourse(_prev: CourseFormState, formData: FormData): Pr
       "obsidian_note",
     ].map((k) => [k, String(formData.get(k) ?? "")]),
   );
+  const raw = normalizeCourseLinks(submitted);
   const parsed = courseInputSchema.safeParse({ ...raw, progress_pct: raw.progress_pct || "0" });
 
   if (!parsed.success) {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isObsidianLink, normalizeNotePath, noteFromObsidianLink } from "@/lib/obsidian";
 import type { Enums } from "@/lib/supabase/database.types";
 
 export type CourseStatus = Enums<"course_status">;
@@ -112,3 +113,21 @@ export const courseInputSchema = z.object({
 
 export type CourseInput = z.infer<typeof courseInputSchema>;
 export type CourseField = Exclude<keyof CourseInput, "id">;
+
+export function normalizeCourseLinks(raw: Record<string, string>): Record<string, string> {
+  const next = { ...raw, url: raw.url ?? "", obsidian_note: raw.obsidian_note ?? "" };
+  if (isObsidianLink(next.obsidian_note)) {
+    next.obsidian_note = noteFromObsidianLink(next.obsidian_note) ?? next.obsidian_note;
+  }
+  if (isObsidianLink(next.url)) {
+    const note = noteFromObsidianLink(next.url);
+    if (note) {
+      if (!next.obsidian_note.trim()) next.obsidian_note = note;
+      next.url = "";
+    }
+  }
+  if (next.obsidian_note.trim() && !isObsidianLink(next.obsidian_note)) {
+    next.obsidian_note = normalizeNotePath(next.obsidian_note);
+  }
+  return next;
+}
