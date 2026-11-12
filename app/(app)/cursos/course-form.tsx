@@ -88,7 +88,12 @@ function CourseForm({
   }, [state]);
 
   return (
-    <form action={action} className="flex flex-col gap-4" noValidate>
+    <form
+      key={state.values ? JSON.stringify(state.values) : "initial"}
+      action={action}
+      className="flex flex-col gap-4"
+      noValidate
+    >
       <input type="hidden" name="id" value={values.id ?? ""} />
       {!editing ? <input type="hidden" name="status" value="backlog" /> : null}
       {!editing ? <input type="hidden" name="progress_pct" value="0" /> : null}

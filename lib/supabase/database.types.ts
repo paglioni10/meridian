@@ -111,6 +111,100 @@ export type Database = {
           },
         ];
       };
+      income_sources: {
+        Row: {
+          active: boolean;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          default_amount_cents: number | null;
+          id: string;
+          kind: Database["public"]["Enums"]["income_kind"];
+          name: string;
+          payday: number | null;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          default_amount_cents?: number | null;
+          id?: string;
+          kind: Database["public"]["Enums"]["income_kind"];
+          name: string;
+          payday?: number | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          active?: boolean;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          default_amount_cents?: number | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["income_kind"];
+          name?: string;
+          payday?: number | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      incomes: {
+        Row: {
+          amount_cents: number;
+          competence_month: string;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          description: string | null;
+          gross_cents: number | null;
+          id: string;
+          kind: Database["public"]["Enums"]["income_kind"];
+          received_on: string | null;
+          source_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          competence_month: string;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string | null;
+          gross_cents?: number | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["income_kind"];
+          received_on?: string | null;
+          source_id: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          competence_month?: string;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string | null;
+          gross_cents?: number | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["income_kind"];
+          received_on?: string | null;
+          source_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "incomes_source_id_user_id_fkey";
+            columns: ["source_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "income_sources";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       user_settings: {
         Row: {
           active_context: string;
@@ -147,11 +241,30 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      income_series: {
+        Args: { p_context?: string; p_months?: number; p_today?: string };
+        Returns: {
+          guaranteed_cents: number;
+          month: string;
+          total_cents: number;
+          variable_cents: number;
+        }[];
+      };
+      safe_monthly_base: {
+        Args: { p_context?: string; p_months?: number; p_today?: string };
+        Returns: {
+          guaranteed_cents: number;
+          months_considered: number;
+          months_with_income: number;
+          safe_base_cents: number;
+          variable_floor_cents: number;
+        }[];
+      };
     };
     Enums: {
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
+      income_kind: "guaranteed" | "variable";
       priority_level: "low" | "medium" | "high" | "critical";
     };
     CompositeTypes: {
@@ -268,6 +381,7 @@ export const Constants = {
     Enums: {
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
+      income_kind: ["guaranteed", "variable"],
       priority_level: ["low", "medium", "high", "critical"],
     },
   },

@@ -59,7 +59,7 @@ export function Stat({
   size?: "figure" | "display";
 }) {
   return (
-    <div className={cn("stat", alert && "stat-alert")}>
+    <div className={cn("stat", alert && "stat-alert", size === "display" && "col-span-2")}>
       <span className="label">{label}</span>
       <span className={size === "display" ? "figure-xl" : "figure"}>{value}</span>
       {hint ? <span className="label">{hint}</span> : null}

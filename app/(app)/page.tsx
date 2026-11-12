@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { EmptyState, PageHead, Progress, Row, Section, Stat } from "@/components/ui/display";
 import { getCourses } from "@/features/courses/queries";
+import { getSafeBase } from "@/features/income/queries";
+import { formatBRL } from "@/lib/money";
 import { CONTEXT_LABELS } from "@/lib/context";
 import { formatEditionMeta, formatEditionTitle } from "@/lib/dates";
 import { formatHours } from "@/lib/hours";
@@ -25,7 +27,9 @@ export default function HomePage() {
 
       <div className="stats-grid">
         <Stat label="Saldo do mês" value="—" hint="F4" />
-        <Stat label="Base segura" value="—" hint="F3" />
+        <Suspense fallback={<Stat label="Base segura" value="—" />}>
+          <SafeBaseStat />
+        </Suspense>
         <Stat label="Pipeline aberto" value="—" hint="F6" />
         <Stat label="Serviços online" value="—" hint="F7" />
       </div>
@@ -99,6 +103,17 @@ async function EditionHead() {
     <PageHead
       title={formatEditionTitle(now, settings.timezone)}
       meta={`${formatEditionMeta(now, settings.timezone)} · ${CONTEXT_LABELS[context]}`}
+    />
+  );
+}
+
+async function SafeBaseStat() {
+  const base = await getSafeBase(await getActiveContext());
+  return (
+    <Stat
+      label="Base segura"
+      value={base.months_considered > 0 ? formatBRL(base.safe_base_cents) : "—"}
+      hint={base.months_considered > 0 ? `${base.months_considered} meses` : "Lance seus ganhos"}
     />
   );
 }

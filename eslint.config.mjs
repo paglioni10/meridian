@@ -12,5 +12,6 @@ export default defineConfig([
     "next-env.d.ts",
     "identidade-visual/**",
     "supabase/.temp/**",
+    "Meridian Spotify Player Comparison-handoff/**",
   ]),
 ]);

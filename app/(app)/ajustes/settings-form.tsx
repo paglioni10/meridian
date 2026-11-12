@@ -24,7 +24,11 @@ export function SettingsForm({
   }, [state, toast]);
 
   return (
-    <form action={action} className="flex max-w-md flex-col gap-5">
+    <form
+      key={state.values ? JSON.stringify(state.values) : "initial"}
+      action={action}
+      className="flex max-w-md flex-col gap-5"
+    >
       <Field
         label="Vault do Obsidian"
         hint="Nome exato do vault, usado nos links obsidian://"

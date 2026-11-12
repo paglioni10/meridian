@@ -34,3 +34,48 @@ export function formatDayMonth(value: string | Date, timeZone = DEFAULT_TIMEZONE
       : new Date(value);
   return new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "2-digit" }).format(date);
 }
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+export function todayISO(date = new Date(), timeZone = DEFAULT_TIMEZONE): string {
+  const { year, month, day } = parts(date, timeZone);
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+export function currentMonthISO(date = new Date(), timeZone = DEFAULT_TIMEZONE): string {
+  const { year, month } = parts(date, timeZone);
+  return `${year}-${pad(month)}-01`;
+}
+
+export function paydayISO(monthISO: string, payday: number): string {
+  const [year, month] = monthISO.split("-").map(Number);
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${pad(month)}-${pad(Math.min(payday, last))}`;
+}
+
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTHS_LONG = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+export function formatMonthShort(monthISO: string): string {
+  const [year, month] = monthISO.split("-").map(Number);
+  return `${MONTHS_SHORT[month - 1]}/${String(year).slice(2)}`;
+}
+
+export function formatMonthLong(monthISO: string): string {
+  const [year, month] = monthISO.split("-").map(Number);
+  const name = MONTHS_LONG[month - 1];
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year}`;
+}
