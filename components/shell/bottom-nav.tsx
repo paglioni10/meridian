@@ -7,7 +7,7 @@ import { BOTTOM_NAV, MORE_HREFS, isActive } from "./nav";
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Principal" className="bottom-nav">
+    <nav aria-label="Principal" className="tabbar">
       {BOTTOM_NAV.map((item) => {
         const active =
           item.href === "/mais"
@@ -18,7 +18,7 @@ export function BottomNav() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className="group bottom-nav-item no-underline"
+            className="group tabbar-item no-underline"
           >
             <span
               aria-hidden

@@ -101,7 +101,7 @@ Alvo de toque mínimo 44px. Texto mínimo 11px apenas para rótulos; corpo 14px.
 Sombras, gradientes, blur, cantos arredondados, cards com fundo, ícones decorativos, emoji, fontes fora das três definidas, cores fora da tabela.
 
 ## Next.js + Tailwind
-Tailwind v4: o `tailwind.config.js` (formato v3) é carregado via `@config` no `globals.css`, que usa `@import "tailwindcss"`. Classes de componente reutilizadas com `@apply` são declaradas com `@utility`. Arquivos: `tailwind.config.js`, `globals.css` (camada components), `theme-light.css`, `theme-dark.css`. Fontes via `next/font/google` com variáveis `--font-archivo`, `--font-public-sans`, `--font-plex-mono` no `<html>`. Blur apenas no overlay de modal (`backdrop-blur-overlay`); sombra apenas `shadow-modal` (desktop) e `shadow-sheet` (bottom sheet mobile).
+Tailwind v4: o `tailwind.config.js` (formato v3) é carregado via `@config` no `globals.css`, que usa `@import "tailwindcss"`. No app, as classes de componente ficam em `app/styles/components.css` (`@layer components`), combinadas como base + modificador (`btn btn-primary`). Nenhum nome de componente pode coincidir com um utilitário gerado pelo Tailwind: como o config define o espaçamento `nav`, `.bottom-nav` vira `bottom: 64px`; por isso a barra inferior usa `.tabbar` / `.tabbar-item`. Arquivos: `tailwind.config.js`, `globals.css` (camada components), `theme-light.css`, `theme-dark.css`. Fontes via `next/font/google` com variáveis `--font-archivo`, `--font-public-sans`, `--font-plex-mono` no `<html>`. Blur apenas no overlay de modal (`backdrop-blur-overlay`); sombra apenas `shadow-modal` (desktop) e `shadow-sheet` (bottom sheet mobile).
 
 ## Breakpoints
 | Nome | Largura | Papel |
