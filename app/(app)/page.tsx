@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { EmptyState, PageHead, Progress, Row, Section, Stat } from "@/components/ui/display";
 import { getCourses } from "@/features/courses/queries";
+import { getGoals } from "@/features/goals/queries";
 import { getSafeBase } from "@/features/income/queries";
 import { formatBRL } from "@/lib/money";
 import { CONTEXT_LABELS } from "@/lib/context";
@@ -13,7 +14,6 @@ import { getActiveContext, getSettings } from "@/lib/settings";
 
 const PANELS = [
   { title: "Últimas transações", phase: "F4", href: "/financas", wide: false },
-  { title: "Trilha de objetivos", phase: "F5", href: "/objetivos", wide: false },
   { title: "Servidores", phase: "F7", href: "/infra", wide: false },
   { title: "Freelance", phase: "F6", href: "/freelance", wide: true },
 ];
@@ -49,6 +49,18 @@ export default function HomePage() {
             <EmptyState title="Sem dados">Disponível na fase {panel.phase}.</EmptyState>
           </Section>
         ))}
+        <Section
+          title="Trilha de objetivos"
+          action={
+            <Link href="/objetivos" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <ActiveGoals />
+          </Suspense>
+        </Section>
         <Section
           title="Backlog de cursos"
           action={
@@ -115,5 +127,36 @@ async function SafeBaseStat() {
       value={base.months_considered > 0 ? formatBRL(base.safe_base_cents) : "—"}
       hint={base.months_considered > 0 ? `${base.months_considered} meses` : "Lance seus ganhos"}
     />
+  );
+}
+
+async function ActiveGoals() {
+  const goals = (await getGoals(await getActiveContext())).filter((g) => g.status === "active").slice(0, 4);
+  if (goals.length === 0) {
+    return <EmptyState title="Sem objetivos ativos">Crie metas em Objetivos.</EmptyState>;
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {goals.map((g) => (
+        <div key={g.id} className="flex flex-col gap-1.5">
+          <Row
+            left={g.title}
+            right={`${Number(g.pct).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
+            className="border-0 pb-0"
+          />
+          <Progress
+            value={Number(g.pct)}
+            tone={g.is_late ? "alert" : Number(g.pct) > 0 ? "active" : "ink"}
+            label={`Progresso de ${g.title}`}
+          />
+          {g.target_cents !== null ? (
+            <span className="label">
+              {formatBRL(g.saved_cents)} de {formatBRL(g.target_cents)}
+              {g.is_late ? " · atrasado" : ""}
+            </span>
+          ) : null}
+        </div>
+      ))}
+    </div>
   );
 }

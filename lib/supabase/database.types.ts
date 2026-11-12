@@ -255,6 +255,133 @@ export type Database = {
           },
         ];
       };
+      goal_contributions: {
+        Row: {
+          amount_cents: number;
+          contributed_on: string;
+          created_at: string;
+          goal_id: string;
+          id: string;
+          note: string | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          contributed_on?: string;
+          created_at?: string;
+          goal_id: string;
+          id?: string;
+          note?: string | null;
+          user_id?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          contributed_on?: string;
+          created_at?: string;
+          goal_id?: string;
+          id?: string;
+          note?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "goal_contributions_goal_id_user_id_fkey";
+            columns: ["goal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "goals";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      goal_milestones: {
+        Row: {
+          created_at: string;
+          done_at: string | null;
+          goal_id: string;
+          id: string;
+          position: number;
+          title: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          done_at?: string | null;
+          goal_id: string;
+          id?: string;
+          position?: number;
+          title: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          done_at?: string | null;
+          goal_id?: string;
+          id?: string;
+          position?: number;
+          title?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "goal_milestones_goal_id_user_id_fkey";
+            columns: ["goal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "goals";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      goals: {
+        Row: {
+          achieved_at: string | null;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          description: string | null;
+          horizon: Database["public"]["Enums"]["goal_horizon"];
+          id: string;
+          position: number;
+          status: Database["public"]["Enums"]["goal_status"];
+          target_cents: number | null;
+          target_date: string | null;
+          title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          achieved_at?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string | null;
+          horizon: Database["public"]["Enums"]["goal_horizon"];
+          id?: string;
+          position?: number;
+          status?: Database["public"]["Enums"]["goal_status"];
+          target_cents?: number | null;
+          target_date?: string | null;
+          title: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          achieved_at?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string | null;
+          horizon?: Database["public"]["Enums"]["goal_horizon"];
+          id?: string;
+          position?: number;
+          status?: Database["public"]["Enums"]["goal_status"];
+          target_cents?: number | null;
+          target_date?: string | null;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       import_batches: {
         Row: {
           created_at: string;
@@ -522,6 +649,28 @@ export type Database = {
           variable_cents: number;
         }[];
       };
+      goal_progress: {
+        Args: { p_context?: string; p_today?: string };
+        Returns: {
+          achieved_at: string;
+          context: Database["public"]["Enums"]["context_kind"];
+          description: string;
+          horizon: Database["public"]["Enums"]["goal_horizon"];
+          id: string;
+          is_late: boolean;
+          milestones_done: number;
+          milestones_total: number;
+          monthly_needed_cents: number;
+          months_left: number;
+          pct: number;
+          saved_cents: number;
+          sort_order: number;
+          status: Database["public"]["Enums"]["goal_status"];
+          target_cents: number;
+          target_date: string;
+          title: string;
+        }[];
+      };
       import_statement: { Args: { p_batch_id: string; p_expenses: Json; p_incomes?: Json }; Returns: Json };
       income_series: {
         Args: { p_context?: string; p_months?: number; p_today?: string };
@@ -548,6 +697,8 @@ export type Database = {
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
       expense_nature: "fixed" | "variable";
       expense_source: "manual" | "import" | "capture" | "recurring";
+      goal_horizon: "short" | "medium" | "long";
+      goal_status: "active" | "paused" | "achieved" | "archived";
       import_format: "ofx" | "nubank_account_csv" | "nubank_card_csv";
       income_kind: "guaranteed" | "variable";
       priority_level: "low" | "medium" | "high" | "critical";
@@ -668,6 +819,8 @@ export const Constants = {
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
       expense_nature: ["fixed", "variable"],
       expense_source: ["manual", "import", "capture", "recurring"],
+      goal_horizon: ["short", "medium", "long"],
+      goal_status: ["active", "paused", "achieved", "archived"],
       import_format: ["ofx", "nubank_account_csv", "nubank_card_csv"],
       income_kind: ["guaranteed", "variable"],
       priority_level: ["low", "medium", "high", "critical"],
