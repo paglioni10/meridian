@@ -564,8 +564,8 @@ $$;
 
 **Next.js**
 - `lib/parsers/normalize.ts`, `hash.ts` (Web Crypto `subtle.digest('SHA-256')`), `ofx.ts`, `nubank-csv.ts`, `detect.ts` (detecta formato pelo conteúdo, não pela extensão).
-- `POST /api/import/nubank` (multipart): parse → aplica regras de categoria → consulta hashes já existentes → retorna prévia `{ rows, duplicates, credits, fileHash }`. Não grava nada.
-- Server Action `commitImport(fileHash, rows)`: cria `import_batches` e chama `rpc('import_expenses')`. Retorna inseridas/ignoradas.
+- **Implementado como Server Action** `previewStatement(formData)` (limite `experimental.serverActions.bodySizeLimit = 3mb`): parse → classificação (despesa, ganho ou ignorar, com motivo) → regras de categoria → vínculo com fixas → consulta de hashes, identificadores e ganhos já lançados com o mesmo valor no mês. Não grava nada.
+- Server Action `commitStatement`: recalcula o hash de cada linha no servidor, cria `import_batches` e chama `rpc('import_statement')`, que grava despesas e ganhos (créditos com `import_hash`) numa transação. Desfazer apaga o lote e, por cascata, tudo o que ele criou.
 - Server Actions: `createExpense`, `updateExpense`, `deleteExpense`, `bulkCategorize`, `createCategory`, `createRule`, `createRecurring`, `undoImport(batchId)`.
 - Matching de recorrentes: despesa importada cujo `description_normalized` contém `match_pattern` é vinculada ao recorrente e marcada `fixed`.
 - Custos de infraestrutura freelance entram como recorrentes no contexto `freelance` (ex.: VPS Hetzner, `match_pattern = 'hetzner'`, ~R$ 36/mês). Cobrança em dólar chega no extrato já convertida em reais com IOF; o valor importado prevalece sobre o previsto e a diferença aparece no `FixedChecklist`.

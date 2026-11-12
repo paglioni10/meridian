@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { IncomeChart } from "@/components/charts/income-chart";
+import { FinanceTabs } from "@/components/shell/finance-tabs";
 import { EmptyState, PageHead, Section, Stat } from "@/components/ui/display";
 import { getIncomeSeries, getIncomeSources, getIncomes, getSafeBase } from "@/features/income/queries";
 import { RANGES, rangeSchema, type Range } from "@/features/income/schema";
@@ -21,12 +22,7 @@ export default function IncomePage({ searchParams }: PageProps<"/financas/ganhos
     <>
       <PageHead
         title="Finanças"
-        meta={
-          <span className="flex gap-4">
-            <span className="text-danger">Ganhos</span>
-            <span title="Disponível na fase F4">Despesas · F4</span>
-          </span>
-        }
+        meta={<FinanceTabs />}
         actions={
           <Suspense fallback={null}>
             <HeadActions />

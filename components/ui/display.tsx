@@ -16,7 +16,7 @@ export function PageHead({
     <header className="page-head">
       <div className="flex flex-col gap-1">
         <h1 className="h1">{title}</h1>
-        {meta ? <p className="label">{meta}</p> : null}
+        {meta ? <div className="label">{meta}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>

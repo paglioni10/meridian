@@ -23,6 +23,39 @@ export type Database = {
   };
   public: {
     Tables: {
+      category_rules: {
+        Row: {
+          category_id: string;
+          created_at: string;
+          id: string;
+          pattern: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          category_id: string;
+          created_at?: string;
+          id?: string;
+          pattern: string;
+          user_id?: string;
+        };
+        Update: {
+          category_id?: string;
+          created_at?: string;
+          id?: string;
+          pattern?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "category_rules_category_id_user_id_fkey";
+            columns: ["category_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "expense_categories";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       course_categories: {
         Row: {
           created_at: string;
@@ -111,6 +144,163 @@ export type Database = {
           },
         ];
       };
+      expense_categories: {
+        Row: {
+          created_at: string;
+          id: string;
+          monthly_budget_cents: number | null;
+          name: string;
+          nature: Database["public"]["Enums"]["expense_nature"];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          monthly_budget_cents?: number | null;
+          name: string;
+          nature?: Database["public"]["Enums"]["expense_nature"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          monthly_budget_cents?: number | null;
+          name?: string;
+          nature?: Database["public"]["Enums"]["expense_nature"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      expenses: {
+        Row: {
+          amount_cents: number;
+          category_id: string | null;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          dedupe_hash: string | null;
+          description: string;
+          description_normalized: string;
+          external_id: string | null;
+          id: string;
+          import_batch_id: string | null;
+          nature: Database["public"]["Enums"]["expense_nature"];
+          occurred_on: string;
+          recurring_expense_id: string | null;
+          source: Database["public"]["Enums"]["expense_source"];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents: number;
+          category_id?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          dedupe_hash?: string | null;
+          description: string;
+          description_normalized: string;
+          external_id?: string | null;
+          id?: string;
+          import_batch_id?: string | null;
+          nature?: Database["public"]["Enums"]["expense_nature"];
+          occurred_on: string;
+          recurring_expense_id?: string | null;
+          source?: Database["public"]["Enums"]["expense_source"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          category_id?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          dedupe_hash?: string | null;
+          description?: string;
+          description_normalized?: string;
+          external_id?: string | null;
+          id?: string;
+          import_batch_id?: string | null;
+          nature?: Database["public"]["Enums"]["expense_nature"];
+          occurred_on?: string;
+          recurring_expense_id?: string | null;
+          source?: Database["public"]["Enums"]["expense_source"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_user_id_fkey";
+            columns: ["category_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "expense_categories";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "expenses_import_batch_id_user_id_fkey";
+            columns: ["import_batch_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "import_batches";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "expenses_recurring_expense_id_user_id_fkey";
+            columns: ["recurring_expense_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "recurring_expenses";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      import_batches: {
+        Row: {
+          created_at: string;
+          file_sha256: string;
+          filename: string;
+          format: Database["public"]["Enums"]["import_format"];
+          id: string;
+          income_rows: number;
+          inserted_rows: number;
+          period_end: string | null;
+          period_start: string | null;
+          skipped_rows: number;
+          total_rows: number;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          file_sha256: string;
+          filename: string;
+          format: Database["public"]["Enums"]["import_format"];
+          id?: string;
+          income_rows?: number;
+          inserted_rows?: number;
+          period_end?: string | null;
+          period_start?: string | null;
+          skipped_rows?: number;
+          total_rows?: number;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          file_sha256?: string;
+          filename?: string;
+          format?: Database["public"]["Enums"]["import_format"];
+          id?: string;
+          income_rows?: number;
+          inserted_rows?: number;
+          period_end?: string | null;
+          period_start?: string | null;
+          skipped_rows?: number;
+          total_rows?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       income_sources: {
         Row: {
           active: boolean;
@@ -160,6 +350,8 @@ export type Database = {
           description: string | null;
           gross_cents: number | null;
           id: string;
+          import_batch_id: string | null;
+          import_hash: string | null;
           kind: Database["public"]["Enums"]["income_kind"];
           received_on: string | null;
           source_id: string;
@@ -175,6 +367,8 @@ export type Database = {
           description?: string | null;
           gross_cents?: number | null;
           id?: string;
+          import_batch_id?: string | null;
+          import_hash?: string | null;
           kind?: Database["public"]["Enums"]["income_kind"];
           received_on?: string | null;
           source_id: string;
@@ -189,6 +383,8 @@ export type Database = {
           description?: string | null;
           gross_cents?: number | null;
           id?: string;
+          import_batch_id?: string | null;
+          import_hash?: string | null;
           kind?: Database["public"]["Enums"]["income_kind"];
           received_on?: string | null;
           source_id?: string;
@@ -197,10 +393,74 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: "incomes_import_batch_fk";
+            columns: ["import_batch_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "import_batches";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
             foreignKeyName: "incomes_source_id_user_id_fkey";
             columns: ["source_id", "user_id"];
             isOneToOne: false;
             referencedRelation: "income_sources";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      recurring_expenses: {
+        Row: {
+          active: boolean;
+          amount_cents: number;
+          category_id: string | null;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          description: string;
+          due_day: number;
+          ends_on: string | null;
+          id: string;
+          match_pattern: string | null;
+          starts_on: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          amount_cents: number;
+          category_id?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description: string;
+          due_day: number;
+          ends_on?: string | null;
+          id?: string;
+          match_pattern?: string | null;
+          starts_on?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          active?: boolean;
+          amount_cents?: number;
+          category_id?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string;
+          due_day?: number;
+          ends_on?: string | null;
+          id?: string;
+          match_pattern?: string | null;
+          starts_on?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expenses_category_id_user_id_fkey";
+            columns: ["category_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "expense_categories";
             referencedColumns: ["id", "user_id"];
           },
         ];
@@ -241,6 +501,28 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      expense_ranking: {
+        Args: { p_context?: string; p_month: string };
+        Returns: {
+          budget_cents: number;
+          category_id: string;
+          name: string;
+          nature: Database["public"]["Enums"]["expense_nature"];
+          qty: number;
+          total_cents: number;
+        }[];
+      };
+      expense_series: {
+        Args: { p_context?: string; p_months?: number; p_today?: string };
+        Returns: {
+          fixed_cents: number;
+          income_cents: number;
+          month: string;
+          total_cents: number;
+          variable_cents: number;
+        }[];
+      };
+      import_statement: { Args: { p_batch_id: string; p_expenses: Json; p_incomes?: Json }; Returns: Json };
       income_series: {
         Args: { p_context?: string; p_months?: number; p_today?: string };
         Returns: {
@@ -264,6 +546,9 @@ export type Database = {
     Enums: {
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
+      expense_nature: "fixed" | "variable";
+      expense_source: "manual" | "import" | "capture" | "recurring";
+      import_format: "ofx" | "nubank_account_csv" | "nubank_card_csv";
       income_kind: "guaranteed" | "variable";
       priority_level: "low" | "medium" | "high" | "critical";
     };
@@ -381,6 +666,9 @@ export const Constants = {
     Enums: {
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
+      expense_nature: ["fixed", "variable"],
+      expense_source: ["manual", "import", "capture", "recurring"],
+      import_format: ["ofx", "nubank_account_csv", "nubank_card_csv"],
       income_kind: ["guaranteed", "variable"],
       priority_level: ["low", "medium", "high", "critical"],
     },
