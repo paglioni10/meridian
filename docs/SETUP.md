@@ -17,7 +17,7 @@ npx supabase link --project-ref <project-ref>
 ```
 
 ```bash
-npx supabase db push
+npx supabase db push --remote
 ```
 
 4. **Authentication → Sign In / Providers**:
