@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { EmptyState, PageHead, Section, Stat } from "@/components/ui/display";
+import { EmptyState, PageHead, Progress, Row, Section, Stat } from "@/components/ui/display";
+import { getCourses } from "@/features/courses/queries";
 import { CONTEXT_LABELS } from "@/lib/context";
 import { formatEditionMeta, formatEditionTitle } from "@/lib/dates";
+import { formatHours } from "@/lib/hours";
+import { obsidianUri } from "@/lib/obsidian";
 import { getActiveContext, getSettings } from "@/lib/settings";
 
 const PANELS = [
@@ -11,7 +14,6 @@ const PANELS = [
   { title: "Trilha de objetivos", phase: "F5", href: "/objetivos", wide: false },
   { title: "Servidores", phase: "F7", href: "/infra", wide: false },
   { title: "Freelance", phase: "F6", href: "/freelance", wide: true },
-  { title: "Backlog de cursos", phase: "F2", href: "/cursos", wide: false },
 ];
 
 export default function HomePage() {
@@ -43,8 +45,49 @@ export default function HomePage() {
             <EmptyState title="Sem dados">Disponível na fase {panel.phase}.</EmptyState>
           </Section>
         ))}
+        <Section
+          title="Backlog de cursos"
+          action={
+            <Link href="/cursos" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <NextCourses />
+          </Suspense>
+        </Section>
       </div>
     </>
+  );
+}
+
+async function NextCourses() {
+  const [context, settings] = await Promise.all([getActiveContext(), getSettings()]);
+  const courses = (await getCourses({ status: "abertos" }, context)).slice(0, 4);
+  if (courses.length === 0) {
+    return <EmptyState title="Backlog vazio">Adicione cursos em Estudos.</EmptyState>;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {courses.map((c) => (
+        <div key={c.id} className="flex flex-col gap-1">
+          <Row
+            left={
+              settings.obsidian_vault && c.obsidian_note ? (
+                <a href={obsidianUri(settings.obsidian_vault, c.obsidian_note)}>{c.title}</a>
+              ) : (
+                c.title
+              )
+            }
+            right={c.status === "in_progress" ? `${c.progress_pct}%` : formatHours(c.estimated_hours)}
+          />
+          {c.status === "in_progress" ? (
+            <Progress value={c.progress_pct} tone="active" label={`Progresso de ${c.title}`} />
+          ) : null}
+        </div>
+      ))}
+    </div>
   );
 }
 

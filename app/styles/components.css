@@ -122,10 +122,10 @@
   }
 
   .segmented {
-    @apply inline-grid auto-cols-fr grid-flow-col border border-border;
+    @apply inline-grid max-w-full [scrollbar-width:none] auto-cols-[minmax(max-content,1fr)] grid-flow-col overflow-x-auto overscroll-x-contain border border-border;
   }
   .segmented-item {
-    @apply flex min-h-tap cursor-pointer items-center justify-center px-3 font-mono text-[12px] font-medium text-foreground uppercase transition-colors hover:text-danger aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:text-primary-foreground;
+    @apply flex min-h-tap cursor-pointer items-center justify-center px-3 font-mono text-[12px] font-medium whitespace-nowrap text-foreground uppercase transition-colors hover:text-danger aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:text-primary-foreground;
   }
 
   .status {

@@ -8,10 +8,11 @@ import { CONTEXT_COOKIE, isAppContext } from "@/lib/context";
 import { TIMEZONES } from "@/lib/settings";
 import { THEME_COOKIE, isThemePreference } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/server";
+import type { TablesUpdate } from "@/lib/supabase/database.types";
 
 const YEAR = 60 * 60 * 24 * 365;
 
-async function saveSettings(values: Record<string, unknown>) {
+async function saveSettings(values: Omit<TablesUpdate<"user_settings">, "user_id">) {
   const user = await getCurrentUser();
   const supabase = await createClient();
   const { error } = await supabase
@@ -45,6 +46,7 @@ export type SettingsFormState = {
   status: "idle" | "saved" | "error";
   message: string;
   fieldErrors?: Partial<Record<"obsidian_vault" | "safe_base_months" | "timezone", string>>;
+  values?: Record<string, string>;
 };
 
 const formSchema = z.object({
@@ -65,11 +67,12 @@ export async function updateSettings(
   _prev: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  const parsed = formSchema.safeParse({
-    obsidian_vault: formData.get("obsidian_vault") ?? "",
-    safe_base_months: formData.get("safe_base_months"),
-    timezone: formData.get("timezone"),
-  });
+  const values = {
+    obsidian_vault: String(formData.get("obsidian_vault") ?? ""),
+    safe_base_months: String(formData.get("safe_base_months") ?? ""),
+    timezone: String(formData.get("timezone") ?? ""),
+  };
+  const parsed = formSchema.safeParse(values);
 
   if (!parsed.success) {
     const fieldErrors: SettingsFormState["fieldErrors"] = {};
@@ -77,13 +80,13 @@ export async function updateSettings(
       const key = issue.path[0] as keyof NonNullable<SettingsFormState["fieldErrors"]>;
       fieldErrors[key] ??= issue.message;
     }
-    return { status: "error", message: "Revise os campos destacados.", fieldErrors };
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors, values };
   }
 
   try {
     await saveSettings(parsed.data);
   } catch (e) {
-    return { status: "error", message: (e as Error).message };
+    return { status: "error", message: (e as Error).message, values };
   }
   refresh();
   return { status: "saved", message: "Preferências salvas." };

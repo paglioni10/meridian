@@ -32,7 +32,7 @@ export function Dialog({
         if (e.target === e.currentTarget) onClose();
       }}
       aria-labelledby="dialog-title"
-      className="modal fixed inset-x-0 top-auto bottom-0 m-0 max-w-none text-foreground backdrop:bg-background/80 backdrop:backdrop-blur-overlay md:inset-0 md:m-auto md:max-w-lg"
+      className="modal fixed inset-x-0 top-auto bottom-0 m-0 hidden max-w-none text-foreground backdrop:bg-background/80 backdrop:backdrop-blur-overlay open:flex md:inset-0 md:m-auto md:max-w-lg"
     >
       <h2 id="dialog-title" className="modal-title">
         {title}

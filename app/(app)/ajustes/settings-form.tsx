@@ -34,7 +34,7 @@ export function SettingsForm({
           <Input
             {...a11y}
             name="obsidian_vault"
-            defaultValue={defaults.obsidian_vault ?? ""}
+            defaultValue={state.values?.obsidian_vault ?? defaults.obsidian_vault ?? ""}
             placeholder="Estudos"
           />
         )}
@@ -52,13 +52,13 @@ export function SettingsForm({
             inputMode="numeric"
             min={3}
             max={24}
-            defaultValue={defaults.safe_base_months}
+            defaultValue={state.values?.safe_base_months ?? defaults.safe_base_months}
           />
         )}
       </Field>
       <Field label="Fuso horário" error={state.fieldErrors?.timezone}>
         {(a11y) => (
-          <Select {...a11y} name="timezone" defaultValue={defaults.timezone}>
+          <Select {...a11y} name="timezone" defaultValue={state.values?.timezone ?? defaults.timezone}>
             {timezones.map((tz) => (
               <option key={tz} value={tz}>
                 {tz.replace("America/", "").replace("_", " ")}
