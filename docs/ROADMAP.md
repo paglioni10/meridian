@@ -58,7 +58,7 @@ F2, F7, F10 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F10
 | Pacotes | `npm` (Node 26 não traz corepack/pnpm). Supabase CLI como devDependency (`npx supabase`). |
 | Grafo | `react-force-graph-2d` (Canvas + `d3-force`), carregado só na rota `/conexoes`. Arestas derivadas das FKs + tabela `entity_links` para conexões manuais (F9). |
 | Integrações OAuth | Tokens de terceiros (Spotify) em `integration_tokens`, sem acesso pelo cliente, criptografados com AES-256-GCM; rotas do servidor usam o client `admin` depois de validar a sessão (F10). |
-| Exceções do DS | Nenhuma por padrão. Grafo usa forma/traço em vez de cores novas; player usa a versão editorial. Exceções só com registro explícito no `DESIGN_SYSTEM.md`. |
+| Exceções do DS | Nenhuma. Player do Spotify: versão editorial aprovada no handoff do Claude Design (12/11/2026). Grafo: forma/traço em vez de cores novas. Exceções só com registro explícito no `DESIGN_SYSTEM.md`. |
 
 ### Estrutura de pastas
 
@@ -1637,33 +1637,37 @@ export async function GET() {
 
 ### Interface
 
-**Conflito com o Design System.** A especificação pede cantos arredondados, capa do álbum como fundo desfocado (`backdrop-blur`) e overlay escuro. O DS do Meridian proíbe as três coisas: raio 0, blur só no overlay de modal e nenhuma imagem decorativa. Por isso a proposta abaixo é a **versão editorial**, que mantém a hierarquia do player do Android (capa, título, artista, dispositivo, trilha, controles) com a linguagem do Meridian. Se você quiser o visual do Android, a alternativa é registrar no DS uma **exceção restrita ao widget de mídia** (raio 12px, capa desfocada com overlay `--paper` a 80%).
+**Decisão de design (handoff do Claude Design em 12/11/2026):** versão editorial, seguindo o Design System, sem exceção. Raio 0, sem blur, sem sombra, sem gradiente e com a capa do álbum como miniatura quadrada. A alternativa estilo Android (cantos arredondados e capa desfocada como fundo) foi descartada. Referência visual: `Meridian Spotify Player Comparison-handoff/.../Meridian Player A vs B.dc.html`.
 
-| Elemento | Especificação (versão editorial) |
+| Elemento | Especificação |
 |---|---|
-| Capa | Quadrada, 48px (sidebar) / 40px (barra mobile) / 160px (bottom sheet), sem borda arredondada |
-| Título | Public Sans 14px 500, uma linha com reticências |
-| Artista · dispositivo | Rótulo IBM Plex Mono 11px maiúsculo, `--ink-muted`, ex.: `DAFT PUNK · IPHONE` |
-| Trilha | `.progress.progress-active` (6px, azul); arrastável com `role="slider"`, setas ±10 s, Home/End |
-| Tempo | IBM Plex Mono 11px, `01:03 / 03:50`, `tabular-nums` |
-| Controles | Anterior, Tocar/Pausar, Próxima, Curtir; alvos de 44px; ícones SVG funcionais em `--ink`; Curtir ativo em `--blue` com `aria-pressed` |
-| Borda | Filete superior 1px `--ink` (sidebar) / `border-t-3` (barra mobile), sem sombra |
+| Capa | Quadrada, sem borda: 48px (sidebar), 40px (barra mobile), 160px (bottom sheet) |
+| Título | Public Sans 14px 500, uma linha com reticências; no bottom sheet, Archivo 800 20px |
+| Artista · dispositivo | Rótulo IBM Plex Mono 11px maiúsculo `--ink-muted`, ex.: `DAFT PUNK · IPHONE`; no bottom sheet, artista e dispositivo em linhas separadas |
+| Trilha | `.progress` 6px em `--rule` com preenchimento `--blue`; na barra mobile, linha de 2px colada na borda superior; no bottom sheet, puxador quadrado 14px em `--blue` |
+| Tempo | IBM Plex Mono 11px `tabular-nums`: `01:03 / 03:50` na sidebar; no bottom sheet, decorrido à esquerda e duração à direita |
+| Controles | Linha distribuída: Anterior, Tocar/Pausar, Próxima, Curtir, cada um com 44×44px e ícone SVG em `--ink` sem fundo |
+| Tocar/Pausar | Único botão preenchido: fundo `--ink`, ícone `--paper` (inversão, igual ao `.btn-primary`) |
+| Curtir | Ativo em `--blue` com `aria-pressed="true"` |
+| Bordas | Sidebar: filete superior 1px `--ink`, o bloco ocupa a largura toda da sidebar (sangra o padding de 24px); barra mobile e bottom sheet: `border-t-3` `--ink`; sem sombra |
 
-**Desktop (≥1024px):** bloco fixo na base da sidebar (200px), acima de “Ajustes”.
-- Tocando ou pausado: capa + título + artista + trilha + tempo + controles.
-- Nada tocando: uma linha `SPOTIFY · INATIVO` em rótulo.
+**Desktop (≥1024px):** bloco na base da sidebar (200px), acima de “Ajustes / Sair”, com padding 12px e espaçamento de 8px entre as linhas.
+- Tocando ou pausado: capa + título + artista · dispositivo, trilha, tempo e controles.
+- Nada tocando: uma linha `SPOTIFY · INATIVO` em rótulo, com o mesmo filete superior.
+- Conta Free: capa, título, trilha e tempo sem controles, e o rótulo `SOMENTE LEITURA` em `--ink`. A trilha fica com `aria-disabled="true"`.
 - Desconectado: não aparece. A conexão fica em Ajustes.
 
-**Mobile e PWA (<1024px):** barra de 56px fixa logo acima da barra inferior.
+**Mobile e PWA (<1024px):** barra de 56px fixa logo acima da `.tabbar`.
 - Posição: `bottom: calc(var(--nav-h) + env(safe-area-inset-bottom))`.
-- Conteúdo: capa 40px, título/artista, botão Tocar/Pausar e a trilha como linha de 2px na borda superior.
-- Toque na barra: abre um bottom sheet (`Dialog`) com capa grande, trilha arrastável e todos os controles.
+- Conteúdo: trilha de 2px no topo, capa 40px, título e artista · dispositivo, e o botão Tocar/Pausar preenchido à direita.
+- Conta Free: a mesma barra, sem o botão.
+- Toque na barra: abre o bottom sheet com overlay `--paper` a 80% sem blur, `border-t-3`, cabeçalho `TOCANDO AGORA` + `FECHAR` (rótulo em `--blue`, alvo de 44px), capa 160px ao lado do título, trilha arrastável e controles.
 - Variável `--player-h`: soma no `padding-bottom` do `.main` e no deslocamento do botão de captura rápida, para nada ficar coberto.
 - Nada tocando ou desconectado: a barra some.
 
 **Acessibilidade:**
 - Botões com `aria-label` (“Tocar”, “Pausar”, “Próxima faixa”, “Faixa anterior”, “Salvar na biblioteca”).
-- A trilha anuncia `aria-valuetext="1 min 3 s de 3 min 50 s"`.
+- A trilha é `role="slider"` com `aria-valuetext="1 min 3 s de 3 min 50 s"`.
 - Mudança de faixa é anunciada numa região `aria-live="polite"`.
 - Nenhuma animação de texto rolando.
 

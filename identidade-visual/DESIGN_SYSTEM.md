@@ -89,6 +89,7 @@ Estados: hover do `.btn` inverte cores; link hover vira vermelho; foco visível 
 - **Freelance:** `.kanban`; valor do projeto em mono no card.
 - **Servidores:** `.row` com nome | métrica e status; offline em --red.
 - **Cursos:** `.row` título | link `obsidian://` em mono azul.
+- **Player de mídia (Spotify):** sem exceção ao DS. Capa quadrada como miniatura (48/40/160px), título em Public Sans 14px 500, `ARTISTA · DISPOSITIVO` em rótulo, `.progress` com preenchimento azul, tempo mono `01:03 / 03:50`, controles de 44px sem fundo e só Tocar/Pausar invertido (fundo `--ink`), Curtir ativo em `--blue`. Na sidebar, o bloco ocupa a largura toda com filete superior 1px; no mobile, barra de 56px com `border-t-3` acima da `.tabbar` e trilha de 2px no topo; bottom sheet com overlay `--paper` 80% sem blur. Inativo: rótulo `SPOTIFY · INATIVO`. Conta Free: rótulo `SOMENTE LEITURA`, sem controles.
 - **Gráficos:** apenas linhas/barras 1px em --ink, destaque em --blue, alerta em --red; sem preenchimento, sem grade pesada, eixos em mono 11px.
 
 ## Acessibilidade
