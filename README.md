@@ -7,6 +7,7 @@ Next.js (App Router) · TypeScript · Tailwind CSS v4 · Supabase · Vercel · P
 - Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
 - Design System: [identidade-visual/DESIGN_SYSTEM.md](identidade-visual/DESIGN_SYSTEM.md)
 - Setup e deploy: [docs/SETUP.md](docs/SETUP.md)
+- VPS (endurecimento e integração): [docs/VPS.md](docs/VPS.md)
 
 ## Desenvolvimento local
 

@@ -46,6 +46,7 @@ F2, F7 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1.
 | Validação | Zod compartilhado entre form (`react-hook-form`) e Server Action. |
 | Migrations | Supabase CLI (`supabase/migrations/*.sql`), tipos gerados com `supabase gen types typescript`. Nada de alteração manual no painel. |
 | Gráficos | Componentes SVG próprios (linha/barra 1px, `--ink`/`--blue`/`--red`), conforme regra do DS. Sem lib de chart pesada. |
+| VPS própria | Hetzner com n8n já existente. Não hospeda o Meridian; serve como alvo monitorado, canal de alertas e watchdog externo (F7). |
 | Agendamentos | `pg_cron` + `pg_net` no Supabase (gratuito, sem limite de minutos) chamando Route Handlers protegidos por `CRON_SECRET`. O tráfego gerado também evita a pausa por inatividade do Free Tier. |
 | Testes | Vitest (parsers, cálculos, utils), Playwright (E2E por módulo), testes de RLS com dois usuários no Supabase local. |
 | Tailwind | **Resolvido.** Tailwind v4 carregando o `tailwind.config.js` (v3) via `@config`. Classes reutilizadas em `@apply` viram `@utility`. Migração para `@theme` só se houver ganho. |
@@ -561,6 +562,8 @@ $$;
 - Server Action `commitImport(fileHash, rows)`: cria `import_batches` e chama `rpc('import_expenses')`. Retorna inseridas/ignoradas.
 - Server Actions: `createExpense`, `updateExpense`, `deleteExpense`, `bulkCategorize`, `createCategory`, `createRule`, `createRecurring`, `undoImport(batchId)`.
 - Matching de recorrentes: despesa importada cujo `description_normalized` contém `match_pattern` é vinculada ao recorrente e marcada `fixed`.
+- Custos de infraestrutura freelance entram como recorrentes no contexto `freelance` (ex.: VPS Hetzner, `match_pattern = 'hetzner'`, ~R$ 36/mês). Cobrança em dólar chega no extrato já convertida em reais com IOF; o valor importado prevalece sobre o previsto e a diferença aparece no `FixedChecklist`.
+- Margem por cliente: `/freelance` (F6) cruza ganhos do cliente com despesas `freelance` vinculadas ao projeto, mostrando se a infraestrutura repassada cobre o custo.
 
 **Componentes**
 - `/financas/despesas`: `Stat` total do mês, fixos, variáveis, saldo (ganhos − despesas); `ExpenseRanking` (barras horizontais 1px, estouro de orçamento em `--red` + texto `ESTOURO`); `ExpenseHistory` (barras mensais fixo × variável, 12 meses); `FixedChecklist` (recorrentes do mês: pago / pendente / atrasado); `ExpenseList` com filtros.
@@ -778,6 +781,7 @@ create trigger tasks_context_sync
 - Ordenação por índice fracionário: `position = (anterior + próximo) / 2`, rebalanceamento quando a diferença < 1e-6.
 - Server Actions: `createTask`, `updateTask`, `moveTask(id, status, beforeId, afterId)`, `archiveDoneTasks`, `createProject`, `createClient`, `createDeal`, `moveDeal`, `winDeal`, `loseDeal`.
 - `winDeal`: marca `won`, oferece criar projeto `freelance` vinculado e lançar `incomes` variável na fonte Freelance (F3), gravando `income_id`.
+- Migration da F6 adiciona `project_id uuid references projects on delete set null` em `expenses` e `recurring_expenses`, habilitando a margem por cliente (receita do deal − custos do projeto, ex.: VPS).
 - Atualização otimista com `useOptimistic` e rollback em erro.
 
 **Componentes**
@@ -800,6 +804,28 @@ F1 (shell e contexto) e F3 (ligação deal → ganho).
 
 **Objetivo:** visão em tempo quase real do estado de VPS, automações, APIs e sites, com alertas de vencimento de domínios, hospedagens e licenças.
 
+### Papel da VPS existente (Hetzner + n8n)
+
+O Meridian **não** é hospedado na VPS: ela atende um projeto freelance, roda com dados de cliente e não deve concentrar dados financeiros pessoais. Ela entra no Meridian em três papéis:
+
+| Papel | Como |
+|---|---|
+| Primeiro inventário monitorado | VPS, n8n, sites estáticos e redirecionamentos servidos pelo Caddy viram `services`; domínio no Registro.br e crédito pré-pago da Hetzner viram `renewals`. Tudo cadastrado pela UI, nunca versionado (repositório público). |
+| Canal de alertas | Mudança de estado de serviço e vencimentos disparam `POST` assinado para um webhook do n8n, que entrega por Telegram ou e-mail (Resend). O Meridian continua sem dependência dura: se o webhook falhar, o alerta segue visível no painel. |
+| Watchdog externo | Um fluxo do n8n chama `GET /api/health` do Meridian a cada 10 min e alerta se falhar. Cobre o ponto cego de o próprio Meridian (Vercel ou Supabase) estar fora e não conseguir se autodiagnosticar. |
+
+Inventário inicial previsto:
+
+| Item | `kind` | Verificação |
+|---|---|---|
+| VPS Hetzner | `vps` | `http` numa rota de saúde do Caddy (`respond /healthz 200`) |
+| n8n | `automation` | `http` em `/healthz` + `heartbeat` enviado ao fim de cada fluxo crítico |
+| Site estático da cliente | `website` | `keyword` no HTML + validade do certificado TLS |
+| Redirecionamento 301 | `website` | `http` com `expected_status = 301` |
+| Domínio `.com.br` (Registro.br, R$ 40/ano) | renewal `domain` | `expires_on` via RDAP do Registro.br |
+| Crédito pré-pago Hetzner (US$ 25, consumo ~US$ 7,09/mês) | renewal `credit` | `expires_on` projetado por saldo ÷ consumo |
+| Subdomínios DuckDNS | `website` | `http`; queda indica IP desatualizado ou DuckDNS fora |
+
 ### Entregáveis técnicos
 
 **Banco**
@@ -808,7 +834,7 @@ F1 (shell e contexto) e F3 (ligação deal → ganho).
 create type service_kind as enum ('vps', 'automation', 'api', 'website', 'database', 'other');
 create type check_method as enum ('http', 'keyword', 'heartbeat', 'manual');
 create type service_state as enum ('up', 'degraded', 'down', 'unknown');
-create type renewal_kind as enum ('domain', 'hosting', 'license', 'certificate', 'subscription');
+create type renewal_kind as enum ('domain', 'hosting', 'license', 'certificate', 'subscription', 'credit');
 
 create table services (
   id uuid primary key default gen_random_uuid(),
@@ -854,14 +880,35 @@ create table renewals (
   kind renewal_kind not null,
   name text not null,
   provider text,
+  context context_kind not null default 'personal',
   expires_on date not null,
+  currency text not null default 'BRL' check (currency in ('BRL', 'USD', 'EUR')),
   cost_cents bigint check (cost_cents > 0),
   billing_cycle text not null default 'yearly' check (billing_cycle in ('monthly', 'yearly', 'other')),
+  balance_cents bigint check (balance_cents >= 0),
+  monthly_burn_cents bigint check (monthly_burn_cents > 0),
+  balance_updated_on date,
+  owner_is_client boolean not null default false,
   auto_renew boolean not null default false,
   alert_days int[] not null default '{30,7,1}',
   notes text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  check (kind <> 'credit' or (balance_cents is not null and monthly_burn_cents is not null and balance_updated_on is not null))
+);
+
+create table alert_events (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users on delete cascade,
+  service_id uuid references services on delete cascade,
+  renewal_id uuid references renewals on delete cascade,
+  kind text not null check (kind in ('service_down', 'service_up', 'renewal_due', 'renewal_expired', 'credit_low')),
+  dedupe_key text not null,
+  payload jsonb not null default '{}',
+  delivered_at timestamptz,
+  delivery_error text,
+  created_at timestamptz not null default now(),
+  unique (user_id, dedupe_key)
 );
 
 create view v_renewals_due with (security_invoker = true) as
@@ -919,9 +966,11 @@ select cron.schedule(
 **Next.js**
 - `GET|POST /api/cron/health`: valida `CRON_SECRET`, usa client `admin` (service role, apenas server), seleciona serviços `http`/`keyword` vencidos pelo `interval_minutes`, executa checagens em paralelo com `AbortSignal.timeout(8000)`, grava `service_checks` e atualiza `last_*`. Serviços `heartbeat` sem ping há mais de `2 × interval` viram `down`. `export const maxDuration = 60`.
 - `POST /api/heartbeat/[token]`: endpoint para automações (n8n, cron da VPS, scripts) sinalizarem vida.
-- `GET /api/cron/certs` diário: lê validade do certificado TLS via `node:tls` e atualiza `renewals` do tipo `certificate`.
-- Opcional: consulta RDAP (`rdap.org`) para preencher `expires_on` de domínios automaticamente.
-- Server Actions: `createService`, `updateService`, `checkNow(id)`, `createRenewal`, `renewNow(id)` (avança `expires_on` pelo ciclo).
+- `GET /api/health` público e sem dados: responde `{ ok, db }` após um `select 1` via Supabase. Alvo do watchdog no n8n. Fora do matcher do `proxy.ts`.
+- `GET /api/cron/daily` (pg_cron 1×/dia): validade de certificados TLS via `node:tls`, `expires_on` de domínios via RDAP (`rdap.registro.br` para `.br`, `rdap.org` para o resto), projeção de crédito pré-pago (`balance_updated_on + balance ÷ monthly_burn`) e geração dos alertas de vencimento.
+- `lib/alerts.ts`: grava `alert_events` com `dedupe_key` (ex.: `renewal:<id>:7d`, `service:<id>:down:<last_change_at>`) e envia `POST` para `ALERT_WEBHOOK_URL` com header `X-Meridian-Signature` (HMAC-SHA256 do corpo com `ALERT_WEBHOOK_SECRET`). Falha de entrega fica em `delivery_error` e é reenviada na próxima rodada.
+- Fluxo n8n versionado em `docs/n8n/meridian-alerts.json` (webhook → valida HMAC → Telegram/Resend) e `docs/n8n/meridian-watchdog.json` (cron 10 min → `GET /api/health` → alerta), sem credenciais.
+- Server Actions: `createService`, `updateService`, `checkNow(id)`, `createRenewal`, `renewNow(id)` (avança `expires_on` pelo ciclo), `topUpCredit(id, amount)` (atualiza saldo e reprojeta `expires_on`).
 
 **Componentes**
 - `/infra`: `Stat` online/total, incidentes 24 h, próximos vencimentos; `ServiceList` (`.row`: nome | latência mono | `Tag` ONLINE/LENTO/OFFLINE, offline em `--red`); `UptimeSparkline` 7 dias; `RenewalList` ordenada por `days_left` com `A VENCER` / `VENCIDO`; `ServiceForm` com snippet de heartbeat copiável (`curl -X POST .../api/heartbeat/<token>`).
@@ -932,10 +981,14 @@ select cron.schedule(
 - Chamada à rota de cron sem `Bearer` correto retorna 401.
 - Vencimentos com 30/7/1 dias aparecem destacados; vencido aparece em `--red` com texto.
 - Retenção mantém `service_checks` abaixo de 30 dias; tamanho do banco monitorado (< 100 MB).
-- `SUPABASE_SERVICE_ROLE_KEY` ausente do bundle do cliente (verificado com busca no `.next/static`).
+- `SUPABASE_SECRET_KEY` ausente do bundle do cliente (verificado com busca no `.next/static`).
+- Inventário da VPS cadastrado e com estado real; parar o container do n8n gera `OFFLINE` e alerta no Telegram/e-mail uma única vez, e a volta gera um único alerta `ONLINE`.
+- Crédito Hetzner exibe data projetada de esgotamento e alerta 30/7/1 dias antes.
+- Webhook com assinatura inválida é rejeitado pelo fluxo do n8n.
+- Watchdog do n8n alerta quando `/api/health` falha (testado apontando para uma URL inexistente).
 
 ### Dependências
-F1. Independente dos módulos financeiros.
+F1. Independente dos módulos financeiros. Para os alertas: VPS endurecida conforme `docs/VPS.md` e variáveis `ALERT_WEBHOOK_URL` e `ALERT_WEBHOOK_SECRET` na Vercel.
 
 ---
 
@@ -1069,4 +1122,7 @@ F8.
 | Mudança no layout do CSV/OFX do Nubank | Detecção por conteúdo, parsers isolados com fixtures e erro explícito de formato desconhecido |
 | Timeout de função na Vercel Hobby | Checagens paralelas com timeout de 8 s e `maxDuration = 60` |
 | `obsidian://` indisponível no dispositivo | Link desabilitado com aviso quando vault não configurado; fallback para abrir URL do curso |
-| Vazamento da service role key | Usada apenas em `lib/supabase/admin.ts` com `import 'server-only'` e verificação no bundle no CI |
+| Vazamento da secret key | Usada apenas em `lib/supabase/admin.ts` com `import 'server-only'` e verificação no bundle no CI |
+| VPS compartilhada com projeto de cliente | Meridian não hospeda nada nela; só monitora e usa o n8n como canal de alerta. Dados do servidor (IP, hostname) ficam no banco, nunca no repositório |
+| Acesso SSH por senha como root na VPS | Endurecimento descrito em `docs/VPS.md` antes da F7 |
+| Meridian fora do ar sem ninguém perceber | Watchdog externo no n8n chamando `/api/health` |
