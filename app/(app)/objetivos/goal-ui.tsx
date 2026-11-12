@@ -20,6 +20,9 @@ import {
 } from "@/features/goals/actions";
 import {
   CONTEXT_KINDS,
+  CUSTOM_HORIZON,
+  describeDistance,
+  horizonForDate,
   HORIZONS,
   HORIZON_HINTS,
   HORIZON_LABELS,
@@ -99,6 +102,24 @@ function GoalForm({
   useResult(state, onDone);
   const e = state.fieldErrors ?? {};
   const v = (k: string, f: string) => state.values?.[k] ?? f;
+  const initialChoice = goal
+    ? goal.target_date && horizonForDate(goal.target_date) === goal.horizon
+      ? CUSTOM_HORIZON
+      : goal.horizon
+    : defaultHorizon === "short"
+      ? CUSTOM_HORIZON
+      : defaultHorizon;
+  const [choice, setChoice] = useState<string>(v("horizon", initialChoice));
+  const [targetDate, setTargetDate] = useState<string>(v("target_date", goal?.target_date ?? ""));
+  const derived = targetDate ? horizonForDate(targetDate) : null;
+  const custom = choice === CUSTOM_HORIZON;
+  const dateHint = custom
+    ? derived
+      ? `Entra em ${HORIZON_LABELS[derived]} · ${describeDistance(targetDate)}`
+      : "Obrigatória no prazo personalizado"
+    : derived && derived !== choice
+      ? `Pela data, seria ${HORIZON_LABELS[derived]}; vale o prazo escolhido`
+      : "Opcional; calcula o aporte mensal";
 
   return (
     <form
@@ -122,7 +143,8 @@ function GoalForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Prazo" error={e.horizon}>
           {(a) => (
-            <Select {...a} name="horizon" defaultValue={v("horizon", goal?.horizon ?? defaultHorizon)}>
+            <Select {...a} name="horizon" value={choice} onChange={(ev) => setChoice(ev.target.value)}>
+              <option value={CUSTOM_HORIZON}>Personalizado · por data</option>
               {HORIZONS.map((h) => (
                 <option key={h} value={h}>
                   {HORIZON_LABELS[h]} · {HORIZON_HINTS[h].toLowerCase()}
@@ -157,13 +179,15 @@ function GoalForm({
             />
           )}
         </Field>
-        <Field label="Data-alvo" error={e.target_date} hint="Opcional; calcula o aporte mensal">
+        <Field label={custom ? "Data do prazo" : "Data-alvo"} error={e.target_date} hint={dateHint}>
           {(a) => (
             <Input
               {...a}
               name="target_date"
               type="date"
-              defaultValue={v("target_date", goal?.target_date ?? "")}
+              value={targetDate}
+              onChange={(ev) => setTargetDate(ev.target.value)}
+              required={custom}
             />
           )}
         </Field>

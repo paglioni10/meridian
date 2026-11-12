@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { contributionInputSchema, goalInputSchema } from "@/features/goals/schema";
+import {
+  contributionInputSchema,
+  describeDistance,
+  goalInputSchema,
+  horizonForDate,
+} from "@/features/goals/schema";
 
 const goal = {
   id: "",
@@ -74,5 +79,45 @@ describe("contributionInputSchema", () => {
     const r = contributionInputSchema.safeParse({ ...base, [field]: value });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0]?.message).toBe(message);
+  });
+});
+
+describe("prazo personalizado", () => {
+  it("exige a data e encaixa na faixa pela distância", () => {
+    const missing = goalInputSchema.safeParse({ ...goal, horizon: "custom", target_date: "" });
+    expect(missing.success).toBe(false);
+    expect(missing.error?.issues[0]).toMatchObject({
+      path: ["target_date"],
+      message: "Escolha a data do prazo personalizado",
+    });
+    const far = goalInputSchema.parse({ ...goal, horizon: "custom", target_date: "2099-01-01" });
+    expect(far.horizon).toBe("long");
+  });
+
+  it("faixa escolhida manualmente prevalece sobre a data", () => {
+    expect(goalInputSchema.parse({ ...goal, horizon: "long", target_date: "2027-01-31" }).horizon).toBe(
+      "long",
+    );
+  });
+
+  it.each([
+    ["2026-12-01", "short"],
+    ["2027-11-12", "short"],
+    ["2027-11-13", "medium"],
+    ["2029-11-12", "medium"],
+    ["2029-12-01", "long"],
+    ["2026-01-01", "short"],
+  ] as const)("%s a partir de 12/11/2026 é %s", (date, horizon) => {
+    expect(horizonForDate(date, "2026-11-12")).toBe(horizon);
+  });
+
+  it.each([
+    ["2028-03-12", "em 1 ano e 4 meses"],
+    ["2027-11-12", "em 1 ano"],
+    ["2027-02-12", "em 3 meses"],
+    ["2026-11-30", "este mês"],
+    ["2026-10-01", "data já passou"],
+  ])("%s → %s", (date, text) => {
+    expect(describeDistance(date, "2026-11-12")).toBe(text);
   });
 });
