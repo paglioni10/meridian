@@ -51,3 +51,6 @@ supabase/.branches
 
 # design runtime
 identidade-visual/.thumbnail
+
+# local tooling
+.claude/

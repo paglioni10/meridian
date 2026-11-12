@@ -1,8 +1,19 @@
 @import "tailwindcss";
 @import "../identidade-visual/theme-light.css";
 @import "../identidade-visual/theme-dark.css";
+@import "./styles/components.css";
 
 @config "../identidade-visual/tailwind.config.js";
+
+:root {
+  --surface: var(--paper);
+  --sidebar-w: 200px;
+  --nav-h: 64px;
+}
+
+[data-theme="dark"] {
+  --surface: #171716;
+}
 
 @layer base {
   html {
@@ -18,5 +29,8 @@
   }
   :focus-visible {
     @apply outline-3 outline-offset-2 outline-secondary;
+  }
+  ::selection {
+    @apply bg-secondary text-secondary-foreground;
   }
 }

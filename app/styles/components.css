@@ -1,0 +1,203 @@
+@layer components {
+  .label {
+    @apply font-mono text-label text-muted uppercase;
+  }
+  .data {
+    @apply font-mono text-data;
+  }
+  .figure {
+    @apply font-display text-figure font-extrabold tabular-nums;
+  }
+  .figure-xl {
+    @apply font-display text-display font-extrabold tabular-nums;
+  }
+  .h1 {
+    @apply font-display text-h1 font-extrabold;
+  }
+  .h2 {
+    @apply border-b border-border pb-1.5 font-display text-h2 font-extrabold;
+  }
+
+  .btn {
+    @apply inline-flex min-h-tap cursor-pointer items-center justify-center gap-2 border border-border bg-background px-4 font-mono text-[12px] font-medium text-foreground uppercase transition-colors hover:bg-foreground hover:text-background disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:border-danger hover:bg-danger hover:text-accent;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent hover:border-border hover:bg-transparent hover:text-foreground;
+  }
+  .btn-danger {
+    @apply border-danger text-danger hover:bg-danger hover:text-accent;
+  }
+  .btn-icon {
+    @apply w-tap px-0;
+  }
+
+  .input {
+    @apply min-h-tap w-full border-0 border-b border-border bg-transparent px-3 font-mono text-[16px] text-foreground placeholder:text-muted focus:border-b-3 focus:border-secondary focus:outline-none md:text-data;
+  }
+  .input-error {
+    @apply border-danger focus:border-danger;
+  }
+  .field {
+    @apply flex flex-col gap-1;
+  }
+  .field-label {
+    @apply font-mono text-label text-muted uppercase;
+  }
+  .field-error {
+    @apply font-mono text-label text-danger uppercase;
+  }
+
+  .tag {
+    @apply inline-flex items-center gap-1 bg-danger px-2 py-1 font-mono text-[12px] leading-none font-medium text-accent uppercase;
+  }
+  .tag-ink {
+    @apply bg-primary text-primary-foreground;
+  }
+  .tag-blue {
+    @apply bg-secondary text-secondary-foreground;
+  }
+  .tag-outline {
+    @apply border border-border bg-transparent text-foreground;
+  }
+
+  .stat {
+    @apply flex flex-col gap-1 border-t border-border pt-2.5;
+  }
+  .stat-alert {
+    @apply border-danger;
+  }
+  .stat-alert .figure {
+    @apply text-danger;
+  }
+
+  .row {
+    @apply flex items-baseline justify-between gap-3 border-b border-border-soft pb-1.5 font-mono text-data;
+  }
+
+  .page-head {
+    @apply flex flex-wrap items-end justify-between gap-4 border-b-3 border-border pb-3;
+  }
+
+  .progress {
+    @apply relative h-1.5 w-full bg-border-soft;
+  }
+  .progress > i {
+    @apply absolute inset-y-0 left-0 block bg-primary;
+  }
+  .progress-active > i {
+    @apply bg-secondary;
+  }
+  .progress-alert > i {
+    @apply bg-danger;
+  }
+
+  .card {
+    @apply border-t border-border pt-3;
+  }
+  .card-active {
+    @apply border-secondary;
+  }
+  .card-alert {
+    @apply border-danger;
+  }
+
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center border border-border px-1 font-mono text-[11px];
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-end justify-center bg-background/80 backdrop-blur-overlay md:items-center;
+  }
+  .modal {
+    @apply flex max-h-[90dvh] w-full animate-rise flex-col gap-5 overflow-y-auto border-3 border-border bg-background p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-sheet md:max-w-lg md:pb-5 md:shadow-modal;
+  }
+  .modal-title {
+    @apply font-display text-h2 font-extrabold;
+  }
+  .modal-actions {
+    @apply flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
+  }
+
+  .segmented {
+    @apply inline-grid auto-cols-fr grid-flow-col border border-border;
+  }
+  .segmented-item {
+    @apply flex min-h-tap cursor-pointer items-center justify-center px-3 font-mono text-[12px] font-medium text-foreground uppercase transition-colors hover:text-danger aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:text-primary-foreground;
+  }
+
+  .status {
+    @apply inline-flex items-center gap-2 font-mono text-[12px] leading-none font-medium uppercase;
+  }
+  .status-dot {
+    @apply h-2.5 w-2.5 border border-border;
+  }
+  .status-online .status-dot {
+    @apply bg-foreground;
+  }
+  .status-offline {
+    @apply text-danger;
+  }
+  .status-offline .status-dot {
+    @apply border-danger bg-danger;
+  }
+  .status-warning {
+    @apply text-danger;
+  }
+  .status-warning .status-dot {
+    @apply animate-pulse border-danger bg-transparent;
+  }
+
+  .empty {
+    @apply flex flex-col items-start gap-3 border-t border-border-soft py-6;
+  }
+
+  .toast {
+    @apply fixed inset-x-4 bottom-[calc(var(--nav-h,64px)+16px)] z-50 flex animate-rise items-center justify-between gap-4 border-3 border-border bg-background px-4 py-3 font-mono text-data shadow-sheet sm:left-auto sm:w-96 lg:bottom-8 lg:shadow-modal;
+  }
+  .toast-alert {
+    @apply border-danger text-danger;
+  }
+
+  .app-shell {
+    @apply min-h-dvh lg:grid lg:grid-cols-app;
+  }
+  .sidebar {
+    @apply hidden border-r border-border px-6 py-7 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-7;
+  }
+  .nav-item {
+    @apply flex min-h-8 items-center gap-2 font-mono text-[12px] font-medium text-foreground hover:text-danger aria-[current=page]:text-danger;
+  }
+  .main {
+    @apply mx-auto flex w-full max-w-content flex-col gap-6 px-4 pt-5 pb-[calc(var(--nav-h,64px)+24px+env(safe-area-inset-bottom))] sm:px-6 md:gap-8 lg:px-10 lg:pt-7 lg:pb-10 3xl:px-14;
+  }
+  .bottom-nav {
+    @apply fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t-3 border-border bg-background pb-[env(safe-area-inset-bottom)] lg:hidden;
+  }
+  .bottom-nav-item {
+    @apply flex min-h-nav flex-col items-center justify-center gap-0.5 font-mono text-[11px] text-muted uppercase hover:text-foreground aria-[current=page]:text-danger;
+  }
+  .stats-grid {
+    @apply grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 md:gap-8;
+  }
+  .panels-grid {
+    @apply grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4;
+  }
+  .panel-wide {
+    @apply md:col-span-2;
+  }
+  .panel {
+    @apply flex flex-col gap-3;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
