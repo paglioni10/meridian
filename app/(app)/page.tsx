@@ -217,6 +217,7 @@ async function DoingTasks() {
 }
 
 async function LatestExpenses() {
+  await connection();
   const context = await getActiveContext();
   const expenses = (await getExpenses(context, currentMonthISO(), {})).slice(0, 5);
   if (expenses.length === 0) {

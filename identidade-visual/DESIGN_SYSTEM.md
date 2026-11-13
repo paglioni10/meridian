@@ -38,6 +38,8 @@ No escuro, vermelho e azul são mais claros e o texto sobre eles é --on-accent 
 
 Contraste: texto sempre --ink ou --ink-muted sobre --paper. Texto sobre --red/--blue apenas --on-accent. Não criar novas cores nem opacidades.
 
+Seleção de texto (`::selection`): fundo --red, texto --on-accent, nos dois temas. Exceção registrada em 13/11/2026: o vermelho aqui marca a seleção do próprio usuário, não um alerta.
+
 Valores financeiros: positivo e negativo em --ink, diferenciados por sinal (+ / −). Vermelho só para atraso, vencimento e estouro de orçamento.
 
 ## Tipografia
