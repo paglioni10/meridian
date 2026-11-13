@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useTransition, type ReactNode } from "react";
 import { Segmented } from "@/components/ui/segmented";
 import { useToast } from "@/components/ui/toast";
 import { setContext } from "@/features/settings/actions";
@@ -35,6 +35,30 @@ export function ContextSwitcher({ current, className }: { current: AppContext; c
         className="w-full sm:w-auto"
       />
     </div>
+  );
+}
+
+export function SwitchContextButton({ to, children }: { to: AppContext; children: ReactNode }) {
+  const [pending, startTransition] = useTransition();
+  const toast = useToast();
+
+  return (
+    <button
+      type="button"
+      className="btn btn-primary"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          try {
+            await setContext(to);
+          } catch {
+            toast("Não foi possível trocar o contexto.", "alert");
+          }
+        })
+      }
+    >
+      {children}
+    </button>
   );
 }
 

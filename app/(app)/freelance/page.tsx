@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { SwitchContextButton } from "@/components/shell/context-switcher";
 import { EmptyState, PageHead, Section, Stat } from "@/components/ui/display";
 import { getClientsWithTotals, getDeals } from "@/features/freelance/queries";
 import { getIncomeSources } from "@/features/income/queries";
+import { CONTEXT_LABELS } from "@/lib/context";
 import { currentMonthISO, todayISO } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
+import { getActiveContext } from "@/lib/settings";
 import {
   ClientList,
   ClosedDeals,
@@ -29,8 +32,32 @@ export default function FreelancePage() {
         }
       />
       <Suspense fallback={<p className="label">Carregando pipeline</p>}>
-        <PipelineSection />
+        <FreelanceBody />
       </Suspense>
+    </>
+  );
+}
+
+function inFreelance(context: string) {
+  return context === "all" || context === "freelance";
+}
+
+async function FreelanceBody() {
+  const context = await getActiveContext();
+  if (!inFreelance(context)) {
+    return (
+      <EmptyState
+        title={`Fora do contexto ${CONTEXT_LABELS[context]}`}
+        action={<SwitchContextButton to="freelance">Ver contexto Freelance</SwitchContextButton>}
+      >
+        Clientes, negócios e orçamentos pertencem sempre ao contexto Freelance. Escolha Tudo ou Freelance para
+        ver o pipeline.
+      </EmptyState>
+    );
+  }
+  return (
+    <>
+      <PipelineSection />
       <Section title="Clientes">
         <Suspense fallback={<p className="label">Carregando</p>}>
           <Clients />
@@ -41,6 +68,7 @@ export default function FreelancePage() {
 }
 
 async function HeadActions() {
+  if (!inFreelance(await getActiveContext())) return null;
   const clients = await getClientsWithTotals();
   return (
     <>
