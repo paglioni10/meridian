@@ -21,7 +21,7 @@ Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `ta
 | F8 | Investimentos & Patrimônio (carteira, cotações, alocação, aportes) | F3, F4, F5, F7 | 5–6 dias |
 | F9 | Quick Capture completo + Visão Geral | F2–F8 | 4–5 dias |
 | F10 | Grafo de Conexões (Knowledge & Life Graph) | F2, F3, F5, F6, F7, F8, F9 | 5–6 dias |
-| F11 | Servidor MCP: Claude conectado ao Meridian | F9, F10 | 4–5 dias |
+| F11 | Servidor MCP: Claude conectado ao Meridian (núcleo, OAuth e catálogo completo) | F9, F10 | 8–10 dias |
 | F12 | Ambient Player: Spotify em tempo real | F1 | 4–5 dias |
 | F13 | PWA, offline, APK (TWA), hardening e release 1.0 | F9, F10, F11, F12 | 4–5 dias |
 
@@ -2232,7 +2232,7 @@ F2, F3, F5, F6, F7, F8 (entidades) e F9 (Visão Geral, onde entra um mini-grafo 
 | Autenticação | `Authorization: Bearer <MERIDIAN_MCP_SECRET>`, segredo de 32+ bytes, comparação em tempo constante. Funciona no Claude Code (header nativo) e no Claude Desktop (ponte `mcp-remote`). |
 | Claude na Web | O conector personalizado do claude.ai não aceita header fixo, só OAuth 2.1. Fica como etapa F11.b: OAuth Server do Supabase Auth (Dynamic Client Registration + `/.well-known/oauth-protected-resource`). O token emitido já é um JWT do usuário, e a mesma `verifyToken` passa a aceitá-lo. Viabilidade conferida no início da fase. |
 | Regras de negócio | Nenhuma regra é duplicada. As mutations hoje dentro das Server Actions migram para `features/*/core.ts`, como funções puras `(db, input) => resultado`, chamadas tanto pela Server Action quanto pela tool. |
-| Escopo de escrita | Só criação e atualização. Nenhuma tool exclui dados. Desfazer acontece pela interface, a partir do log. |
+| Escopo de escrita | Cobertura de todos os módulos (catálogo da F11.c), só com criação, atualização e arquivamento. Nenhuma tool exclui dados. Desfazer acontece pela interface, a partir do log, e cada módulo pode ter as escritas bloqueadas em `/ajustes/agente`. |
 | Idempotência | Toda tool de escrita aceita `idempotency_key`. Uma repetição com a mesma chave devolve o resultado gravado no log, sem gravar de novo. |
 
 ### Banco
@@ -2766,6 +2766,231 @@ export async function addTransaction(raw: unknown) {
   Ambos rodam numa Server Action com a sessão do usuário (RLS) e marcam `reverted_at`.
 - Botão “Gerar novo segredo” só mostra as instruções de rotação: o valor vive na Vercel e o app não grava nem exibe o segredo.
 
+### Catálogo completo (F11.c)
+
+**Objetivo da etapa:** dar ao Claude praticamente o mesmo alcance que você tem pela interface, cobrindo todos os módulos, sem abrir mão do controle: tools específicas por módulo, cada escrita auditada e reversível, e nenhuma exclusão.
+
+**Ordem de entrega dentro da F11**
+1. **F11.a:** núcleo (rota, autenticação, auditoria, `/ajustes/agente`) e as 10 tools descritas acima.
+2. **F11.b:** OAuth para o conector do claude.ai.
+3. **F11.c:** o restante do catálogo, abaixo.
+
+**Princípios**
+- Uma tool por entidade, com `action` (`create`, `update`, `archive`, …), em vez de uma tool por operação. Isso mantém o catálogo enxuto e o Claude escolhe melhor.
+- Toda regra de negócio vem de `features/*/core.ts`, as mesmas funções das Server Actions. Gatilhos, RPCs (`win_deal`, `move_task`, `import_statement`) e validações Zod são idênticos aos da interface.
+- “Remover” vira arquivar, pausar ou desativar, onde a tabela permite. Exclusão física continua só na interface.
+- Toda `update` grava `before_json`, então qualquer alteração pode ser desfeita em `/ajustes/agente`.
+- Leitura ampla e segura: uma tool genérica de consulta, só de leitura, com colunas permitidas por entidade.
+
+**Fica só na interface (de propósito)**
+- excluir qualquer registro;
+- importar extrato (upload de arquivo);
+- configurações (tema, vault do Obsidian, fuso, contexto padrão);
+- segredo do MCP, conexão com o Spotify e autenticação.
+
+**Catálogo**
+
+| Módulo | Tool | Tipo | Ações / regra |
+|---|---|---|---|
+| Geral | `get_dashboard_summary` | leitura | já descrita |
+| Geral | `search_entities` | leitura | já descrita |
+| Geral | `find_records` | leitura | consulta qualquer entidade da lista com filtros (contexto, mês, status, texto, IDs), até 50 linhas, só colunas permitidas |
+| Geral | `get_month_report` | leitura | ganhos × despesas do mês, orçamento por categoria (estouros), despesas fixas pendentes, sobra de caixa |
+| Cursos | `add_course_to_backlog` | escrita | já descrita |
+| Cursos | `update_course` | escrita | status, progresso, prioridade, horas, categoria, nota do Obsidian; `started_on`/`finished_on` preenchidos pela regra da F2 |
+| Cursos | `manage_course_category` | escrita | `create`, `rename` |
+| Ganhos e despesas | `add_financial_transaction` | escrita | já descrita |
+| Ganhos e despesas | `update_financial_transaction` | escrita | edita despesa ou ganho por ID: descrição, valor, data, categoria, natureza, projeto, contexto |
+| Ganhos | `manage_income_source` | escrita | `create`, `update`, `activate`, `deactivate` |
+| Despesas | `manage_expense_category` | escrita | `create`, `update` (nome, natureza, orçamento mensal) |
+| Despesas | `add_category_rule` | escrita | cria regra de classificação; `apply_now` reaplica às despesas sem categoria e devolve quantas mudaram |
+| Despesas | `manage_recurring_expense` | escrita | `create`, `update`, `activate`, `deactivate` |
+| Despesas | `mark_recurring_paid` | escrita | marca a despesa fixa do mês como paga (mesma regra do botão da F4) |
+| Objetivos | `update_goal_progress` | escrita | já descrita |
+| Objetivos | `manage_goal` | escrita | `create`, `update`, `pause`, `resume`, `achieve`, `archive` |
+| Objetivos | `manage_goal_milestone` | escrita | `create`, `update`, `complete`, `reopen` |
+| Projetos | `manage_kanban_task` | escrita | já descrita, mais a ação `archive_done` (arquiva as entregues) |
+| Projetos | `manage_project` | escrita | `create`, `update`, `hold`, `resume`, `finish`, `archive` |
+| Freelance | `manage_client` | escrita | `create`, `update` |
+| Freelance | `manage_deal` | escrita | `create`, `update`, `move_stage`, `win` (RPC `win_deal`: lança o ganho e cria o projeto), `lose`, `reopen` |
+| Infraestrutura | `get_infra_status` | leitura | estado de cada serviço, últimas quedas, vencimentos em 30 dias, saldo de créditos |
+| Infraestrutura | `manage_service` | escrita | `create`, `update`, `pause_checks`, `resume_checks` |
+| Infraestrutura | `manage_renewal` | escrita | `create`, `update`, `mark_renewed` (avança `expires_on` pelo ciclo), `update_balance` (créditos) |
+| Investimentos | `get_portfolio_summary` | leitura | já descrita (F8) |
+| Investimentos | `add_investment_transaction` | escrita | já descrita (F8) |
+| Investimentos | `update_asset_balance` | escrita | já descrita (F8) |
+| Investimentos | `manage_investment_asset` | escrita | `create`, `update`, `archive` |
+| Investimentos | `set_allocation_targets` | escrita | grava as metas por classe de uma vez; soma acima de 100% é rejeitada |
+| Captura | `capture` | escrita | mesmo parser da F9: texto livre vira despesa, tarefa, link etc., ou vai para a inbox |
+| Captura | `triage_inbox_item` | escrita | `route` (envia ao módulo) ou `dismiss` (marca `processed_at`, sem excluir) |
+| Grafo | `link_graph_entities` | escrita | já descrita |
+
+São 33 tools: 7 de leitura e 26 de escrita.
+
+**Controle por grupo.** Em `/ajustes/agente`, um interruptor por módulo libera ou bloqueia as escritas daquele grupo, por exemplo deixando Finanças só leitura. Uma tool de grupo bloqueado devolve `ToolRejection` e gera um log `rejected`. Leitura continua sempre liberada.
+
+```sql
+alter table public.user_settings
+  add column agent_write_blocked text[] not null default '{}'
+  check (agent_write_blocked <@ array['courses', 'finance', 'goals', 'projects', 'freelance', 'infra', 'investments', 'capture', 'graph']::text[]);
+
+alter table public.agent_logs drop constraint agent_logs_target_table_check;
+alter table public.agent_logs add constraint agent_logs_target_table_check
+  check (target_table is null or target_table ~ '^[a-z_]{3,40}$');
+```
+
+**Registro do catálogo**
+
+```ts
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import type { ZodRawShape } from "zod";
+
+export type ToolGroup = "courses" | "finance" | "goals" | "projects" | "freelance" | "infra" | "investments" | "capture" | "graph";
+
+export type ToolDef = {
+  name: string;
+  group: ToolGroup | "read";
+  title: string;
+  description: string;
+  shape: ZodRawShape;
+  annotations: ToolAnnotations;
+  handler: (args: unknown) => Promise<CallToolResult>;
+};
+
+export function registerCatalog(server: McpServer, catalog: ToolDef[]) {
+  for (const tool of catalog) {
+    server.registerTool(
+      tool.name,
+      { title: tool.title, description: tool.description, inputSchema: tool.shape, annotations: tool.annotations },
+      tool.handler,
+    );
+  }
+}
+```
+
+`audited` recebe o `group` da tool e consulta `agent_write_blocked` antes de executar.
+
+**Contratos novos (exemplos do padrão)**
+
+```ts
+export const recordEntity = z.enum([
+  "expenses",
+  "incomes",
+  "income_sources",
+  "expense_categories",
+  "recurring_expenses",
+  "courses",
+  "goals",
+  "tasks",
+  "projects",
+  "clients",
+  "deals",
+  "services",
+  "renewals",
+  "investment_assets",
+  "investment_transactions",
+  "inbox_items",
+]);
+
+export const findRecordsShape = {
+  entity: recordEntity,
+  context: z.enum(["all", "personal", "work", "freelance"]).default("all"),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+  status: z.string().trim().max(30).optional(),
+  text: z.string().trim().min(2).max(80).optional(),
+  ids: z.array(z.uuid()).max(50).optional(),
+  limit: z.number().int().min(1).max(50).default(20),
+};
+
+export const updateTransactionShape = {
+  type: z.enum(["expense", "income"]),
+  id: z.uuid(),
+  description: z.string().trim().min(1).max(200).optional(),
+  amount: reais.optional(),
+  date: isoDate.optional(),
+  category: reference.nullable().optional(),
+  nature: z.enum(["fixed", "variable"]).optional(),
+  project: reference.nullable().optional(),
+  context: context.optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const manageGoalShape = {
+  action: z.enum(["create", "update", "pause", "resume", "achieve", "archive"]),
+  goal: reference.optional(),
+  title: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().max(300).optional(),
+  horizon: z.enum(["short", "medium", "long"]).optional(),
+  target: reais.nullable().optional(),
+  target_date: isoDate.nullable().optional(),
+  context: context.optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const manageGoalSchema = z.object(manageGoalShape).superRefine((v, ctx) => {
+  if (v.action === "create" && (!v.title || !v.horizon)) {
+    ctx.addIssue({ code: "custom", path: ["title"], message: "Objetivo novo exige título e horizonte" });
+  }
+  if (v.action !== "create" && !v.goal) {
+    ctx.addIssue({ code: "custom", path: ["goal"], message: "Informe o objetivo (UUID ou título)" });
+  }
+});
+
+export const manageDealShape = {
+  action: z.enum(["create", "update", "move_stage", "win", "lose", "reopen"]),
+  deal: reference.optional(),
+  client: reference.optional(),
+  title: z.string().trim().min(1).max(120).optional(),
+  stage: z.enum(["lead", "briefing", "proposal", "negotiation"]).optional(),
+  value: reais.nullable().optional(),
+  expected_close_on: isoDate.nullable().optional(),
+  income_source: reference.optional(),
+  received_on: isoDate.optional(),
+  create_project: z.boolean().default(true),
+  lost_reason: z.string().trim().max(200).optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const manageDealSchema = z.object(manageDealShape).superRefine((v, ctx) => {
+  if (v.action === "create" && (!v.client || !v.title)) {
+    ctx.addIssue({ code: "custom", path: ["client"], message: "Negócio novo exige cliente e título" });
+  }
+  if (v.action !== "create" && !v.deal) {
+    ctx.addIssue({ code: "custom", path: ["deal"], message: "Informe o negócio (UUID ou título)" });
+  }
+  if (v.action === "move_stage" && !v.stage) {
+    ctx.addIssue({ code: "custom", path: ["stage"], message: "Informe o estágio de destino" });
+  }
+});
+
+export const manageRenewalShape = {
+  action: z.enum(["create", "update", "mark_renewed", "update_balance"]),
+  renewal: reference.optional(),
+  kind: z.enum(["domain", "hosting", "license", "certificate", "subscription", "credit"]).optional(),
+  name: z.string().trim().min(1).max(120).optional(),
+  provider: z.string().trim().max(80).optional(),
+  expires_on: isoDate.optional(),
+  cost: reais.optional(),
+  currency: z.enum(["BRL", "USD", "EUR"]).optional(),
+  billing_cycle: z.enum(["monthly", "yearly", "other"]).optional(),
+  balance: z.number().min(0).max(10_000_000).optional(),
+  auto_renew: z.boolean().optional(),
+  context: context.optional(),
+  idempotency_key: idempotencyKey,
+};
+```
+
+As demais seguem o mesmo molde: `action` obrigatório, entidade por UUID ou nome (resolvida por `resolve.ts`), campos opcionais validados de novo por `superRefine` conforme a ação, valores em reais convertidos para centavos e `idempotency_key`.
+
+**Critérios de aceite da F11.c**
+- MCP Inspector lista as 33 tools, cada uma com `title`, descrição em português, `readOnlyHint` correto e `destructiveHint: false`.
+- Para cada módulo, um roteiro de conversa no Claude Code executa todas as ações da tabela, e o resultado na interface é idêntico ao da mesma operação feita à mão. O teste compara as linhas gravadas, ignorando IDs e datas de criação.
+- Toda `update` e `archive` grava `before_json`, e o “Desfazer” restaura o estado anterior; `win` desfeito remove o ganho e o projeto criados e devolve o negócio ao estágio anterior.
+- Com Finanças bloqueado em `/ajustes/agente`, `add_financial_transaction` devolve `isError` e gera log `rejected`; `get_month_report` continua respondendo.
+- `find_records` nunca devolve colunas fora da lista permitida (`heartbeat_token`, `description_normalized` e afins ficam de fora) e respeita o limite de 50 linhas.
+- Nenhuma tool do catálogo executa `delete` (verificado por teste que percorre os handlers com um client que falha em qualquer `.delete()`).
+
 ### Configuração do cliente
 
 **Claude Code** (escopo do usuário, fora do repositório público)
@@ -2800,7 +3025,7 @@ claude mcp add --transport http --scope user meridian https://<seu-app>.vercel.a
 
 ### Critérios de aceite
 - Sem `Authorization`, com token errado ou com segredo de menos de 32 caracteres configurado: `401` com `WWW-Authenticate`, sem tocar o banco; tempo de resposta igual para token certo e errado no mesmo tamanho.
-- `MCP Inspector` (`npx @modelcontextprotocol/inspector`) lista as 10 tools com títulos, descrições, schemas e anotações `readOnlyHint`/`destructiveHint` corretas.
+- F11.a: `MCP Inspector` (`npx @modelcontextprotocol/inspector`) lista as 10 tools do núcleo com títulos, descrições, schemas e anotações `readOnlyHint`/`destructiveHint` corretas.
 - Pelo Claude Code e pelo Claude Desktop, frases como estas executam a tool certa e o item aparece na interface após recarregar:
   - “gastei 35,90 no almoço”;
   - “recebi 1.800 do freela da landing page”;
