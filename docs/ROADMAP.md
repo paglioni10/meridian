@@ -1,6 +1,6 @@
 # Meridian · Roadmap de Execução
 
-Plano técnico em 12 fases (F0–F11). Cada fase termina com um deploy em produção na Vercel e só avança quando todos os critérios de aceite estiverem verdes.
+Plano técnico em 13 fases (F0–F12). Cada fase termina com um deploy em produção na Vercel e só avança quando todos os critérios de aceite estiverem verdes.
 
 Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `tailwind.config.js`, `theme-*.css`, `logo/`.
 
@@ -20,19 +20,20 @@ Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `ta
 | F7 | Central de Infraestrutura (monitoramento + vencimentos) | F1 | 4–5 dias |
 | F8 | Quick Capture completo + Visão Geral | F2–F7 | 4–5 dias |
 | F9 | Grafo de Conexões (Knowledge & Life Graph) | F2, F3, F5, F6, F7, F8 | 5–6 dias |
-| F10 | Ambient Player: Spotify em tempo real | F1 | 4–5 dias |
-| F11 | PWA, offline, APK (TWA), hardening e release 1.0 | F8, F9, F10 | 4–5 dias |
+| F10 | Servidor MCP: Claude conectado ao Meridian | F8, F9 | 4–5 dias |
+| F11 | Ambient Player: Spotify em tempo real | F1 | 4–5 dias |
+| F12 | PWA, offline, APK (TWA), hardening e release 1.0 | F8, F9, F10, F11 | 4–5 dias |
 
 ```
 F0 ─ F1 ─┬─ F2 ───────────────┐
          ├─ F3 ─┬─ F4 ────────┤
-         │      ├─ F5 ────────┼─ F8 ─ F9 ─┐
-         │      └─ F6 ────────┤           ├─ F11
-         ├─ F7 ───────────────┘           │
-         └─ F10 ──────────────────────────┘
+         │      ├─ F5 ────────┼─ F8 ─ F9 ─ F10 ─┐
+         │      └─ F6 ────────┤                 ├─ F12
+         ├─ F7 ───────────────┘                 │
+         └─ F11 ────────────────────────────────┘
 ```
 
-F2, F7, F10 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F10 (Spotify) está agendada depois do núcleo por prioridade, não por dependência.
+F2, F7, F11 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F11 (Spotify) está agendada depois do núcleo por prioridade, não por dependência.
 
 ---
 
@@ -57,7 +58,8 @@ F2, F7, F10 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F10
 | Repositório | Público em `github.com/paglioni10/meridian`. Nenhum segredo, e-mail ou dado pessoal versionado; tudo em variáveis da Vercel/GitHub Secrets. |
 | Pacotes | `npm` (Node 26 não traz corepack/pnpm). Supabase CLI como devDependency (`npx supabase`). |
 | Grafo | `react-force-graph-2d` (Canvas + `d3-force`), carregado só na rota `/conexoes`. Arestas derivadas das FKs + tabela `entity_links` para conexões manuais (F9). |
-| Integrações OAuth | Tokens de terceiros (Spotify) em `integration_tokens`, sem acesso pelo cliente, criptografados com AES-256-GCM; rotas do servidor usam o client `admin` depois de validar a sessão (F10). |
+| Integrações OAuth | Tokens de terceiros (Spotify) em `integration_tokens`, sem acesso pelo cliente, criptografados com AES-256-GCM; rotas do servidor usam o client `admin` depois de validar a sessão (F11). |
+| Agente (MCP) | Servidor MCP remoto em `/api/mcp` (Streamable HTTP, `mcp-handler` + SDK oficial) com Bearer próprio. A chave secreta do Supabase só grava a auditoria e abre a sessão do dono; os dados passam pela RLS como na interface. Toda escrita vai para `agent_logs` e pode ser desfeita em `/ajustes/agente` (F10). |
 | Exceções do DS | Nenhuma. Player do Spotify: versão editorial aprovada no handoff do Claude Design (12/11/2026). Grafo: forma/traço em vez de cores novas. Exceções só com registro explícito no `DESIGN_SYSTEM.md`. |
 
 ### Estrutura de pastas
@@ -1446,11 +1448,614 @@ F2, F3, F5, F6, F7 (entidades) e F8 (Visão Geral, onde entra um mini-grafo dos 
 
 ---
 
-## F10 · Ambient Player (Spotify em tempo real)
+## F10 · Servidor MCP (Claude conectado ao Meridian)
+
+**Objetivo:** expor o Meridian como servidor MCP remoto, para que o Claude (Claude Code, Claude Desktop e, numa segunda etapa, Claude na Web) consulte e atualize os dados por linguagem natural durante a conversa, com cada escrita auditada e reversível.
+
+**Por que aqui:** o servidor é uma segunda porta de entrada para os mesmos módulos, então só faz sentido quando eles existem. `get_dashboard_summary` reaproveita as consultas da Visão Geral (F8) e `link_graph_entities` grava em `entity_links` (F9). Fica antes da F12 para que o hardening, o rate limit e a CSP do release já cubram `/api/mcp`. Depois da F8, as tools sem relação com o grafo podem ser antecipadas, deixando só `link_graph_entities` para depois da F9.
+
+### Decisões e ajustes à especificação
+
+| Tema | Decisão |
+|---|---|
+| Transporte | Streamable HTTP sem estado, `POST /api/mcp`. O transporte SSE foi descontinuado na especificação do MCP e exigiria Redis na Vercel; fica desativado. |
+| SDK | `@modelcontextprotocol/sdk` (oficial) servido pelo adaptador `mcp-handler`, da própria Vercel, que monta o transporte sobre Route Handlers do App Router. Versões fixadas no `package.json`. |
+| Hospedagem | Vercel, mesma aplicação, `maxDuration = 60`. Sem container: a VPS continua sem hospedar o Meridian. |
+| Chave do Supabase | O projeto já usa `SUPABASE_SECRET_KEY`, que substitui a antiga `SUPABASE_SERVICE_ROLE_KEY`. Ela fica só no servidor e é usada para dois fins: gravar em `agent_logs` e abrir uma sessão do dono. **Os dados não são lidos nem escritos com a chave secreta**, porque ela ignora a RLS, e as funções `security invoker` (`safe_monthly_base`, `expense_series`, `goal_progress`, `move_task`, `win_deal`) e os `default auth.uid()` dependem do usuário autenticado. |
+| Sessão do dono | `auth.admin.generateLink` + `verifyOtp` geram uma sessão real do usuário `MERIDIAN_OWNER_ID`, sem enviar e-mail. A sessão fica em cache na instância até expirar. Com isso, toda tool roda com RLS, gatilhos e RPCs iguais aos da interface. |
+| Autenticação | `Authorization: Bearer <MERIDIAN_MCP_SECRET>`, segredo de 32+ bytes, comparação em tempo constante. Funciona no Claude Code (header nativo) e no Claude Desktop (ponte `mcp-remote`). |
+| Claude na Web | O conector personalizado do claude.ai não aceita header fixo, só OAuth 2.1. Fica como etapa F10.b: OAuth Server do Supabase Auth (Dynamic Client Registration + `/.well-known/oauth-protected-resource`). O token emitido já é um JWT do usuário, e a mesma `verifyToken` passa a aceitá-lo. Viabilidade conferida no início da fase. |
+| Regras de negócio | Nenhuma regra é duplicada. As mutations hoje dentro das Server Actions migram para `features/*/core.ts`, como funções puras `(db, input) => resultado`, chamadas tanto pela Server Action quanto pela tool. |
+| Escopo de escrita | Só criação e atualização. Nenhuma tool exclui dados. Desfazer acontece pela interface, a partir do log. |
+| Idempotência | Toda tool de escrita aceita `idempotency_key`. Uma repetição com a mesma chave devolve o resultado gravado no log, sem gravar de novo. |
+
+### Banco
+
+```sql
+create type public.agent_log_status as enum ('success', 'error', 'rejected');
+
+create table public.agent_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade,
+  tool_name text not null check (tool_name ~ '^[a-z_]{3,60}$'),
+  payload_json jsonb not null,
+  status public.agent_log_status not null,
+  result_json jsonb,
+  error_message text check (error_message is null or length(error_message) <= 500),
+  target_table text check (target_table is null or target_table in ('expenses', 'incomes', 'goal_contributions', 'tasks', 'courses', 'entity_links')),
+  target_id uuid,
+  before_json jsonb,
+  after_json jsonb,
+  client_name text check (client_name is null or length(client_name) <= 80),
+  idempotency_key text check (idempotency_key is null or length(idempotency_key) between 8 and 80),
+  duration_ms int check (duration_ms >= 0),
+  reverted_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (user_id, idempotency_key),
+  check (status = 'success' or reverted_at is null)
+);
+
+create index agent_logs_user_created_idx on public.agent_logs (user_id, created_at desc);
+create index agent_logs_target_idx on public.agent_logs (target_table, target_id) where target_id is not null;
+
+alter table public.agent_logs enable row level security;
+
+create policy agent_logs_owner_select on public.agent_logs
+  for select to authenticated using (user_id = (select auth.uid()));
+
+create policy agent_logs_owner_revert on public.agent_logs
+  for update to authenticated
+  using (user_id = (select auth.uid()) and status = 'success' and reverted_at is null)
+  with check (user_id = (select auth.uid()));
+
+grant select on public.agent_logs to authenticated;
+grant update (reverted_at) on public.agent_logs to authenticated;
+grant select, insert on public.agent_logs to service_role;
+
+select cron.schedule(
+  'agent-logs-retention',
+  '15 3 * * *',
+  $$delete from public.agent_logs where created_at < now() - interval '180 days'$$
+);
+```
+
+O navegador só lê o log e só altera `reverted_at`. Gravar e apagar registros fica exclusivo do servidor, então uma sessão comprometida no navegador não consegue forjar nem esconder rastros.
+
+### Estrutura
+
+```
+app/api/mcp/route.ts
+lib/mcp/auth.ts
+lib/mcp/owner.ts
+lib/mcp/audit.ts
+lib/mcp/schemas.ts
+lib/mcp/resolve.ts
+lib/mcp/tools/index.ts
+lib/mcp/tools/summary.ts
+lib/mcp/tools/finance.ts
+lib/mcp/tools/goals.ts
+lib/mcp/tools/tasks.ts
+lib/mcp/tools/courses.ts
+lib/mcp/tools/graph.ts
+features/*/core.ts
+app/(app)/ajustes/agente/page.tsx
+```
+
+`proxy.ts` passa a excluir `api/mcp` do matcher, porque a rota se autentica pelo Bearer e não pelo cookie.
+
+**Variáveis (Vercel, nunca no repositório)**
+
+| Variável | Uso |
+|---|---|
+| `MERIDIAN_MCP_SECRET` | Bearer do cliente MCP, gerado com `openssl rand -base64 48` |
+| `MERIDIAN_OWNER_ID` | UUID do usuário dono em `auth.users` |
+| `SUPABASE_SECRET_KEY` | Já existente |
+
+### Rota
+
+```ts
+import { createMcpHandler, withMcpAuth } from "mcp-handler";
+import { verifyMcpToken } from "@/lib/mcp/auth";
+import { registerTools } from "@/lib/mcp/tools";
+
+export const maxDuration = 60;
+
+const handler = createMcpHandler(registerTools, {}, { basePath: "/api", maxDuration: 60, disableSse: true });
+
+const authHandler = withMcpAuth(handler, verifyMcpToken, { required: true });
+
+export { authHandler as GET, authHandler as POST, authHandler as DELETE };
+```
+
+```ts
+import "server-only";
+import { createHash, timingSafeEqual } from "node:crypto";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+
+const digest = (value: string) => createHash("sha256").update(value).digest();
+
+export async function verifyMcpToken(_req: Request, token?: string): Promise<AuthInfo | undefined> {
+  const secret = process.env.MERIDIAN_MCP_SECRET;
+  if (!token || !secret || secret.length < 32) return undefined;
+  if (!timingSafeEqual(digest(token), digest(secret))) return undefined;
+  return { token, clientId: "meridian-owner", scopes: ["meridian:read", "meridian:write"] };
+}
+```
+
+```ts
+import "server-only";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { publicEnv } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
+
+export type OwnerDb = { supabase: SupabaseClient<Database>; userId: string };
+
+let cached: (OwnerDb & { expiresAt: number }) | null = null;
+
+export async function getOwnerDb(): Promise<OwnerDb> {
+  if (cached && cached.expiresAt - 120_000 > Date.now()) return cached;
+  const userId = process.env.MERIDIAN_OWNER_ID;
+  if (!userId) throw new Error("owner_not_configured");
+
+  const admin = createAdminClient();
+  const { data: owner, error: ownerError } = await admin.auth.admin.getUserById(userId);
+  if (ownerError || !owner.user.email) throw new Error("owner_not_found");
+
+  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: owner.user.email,
+  });
+  if (linkError) throw new Error("owner_link_failed");
+
+  const supabase = createClient<Database>(
+    publicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    publicEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+  const { data, error } = await supabase.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: link.properties.hashed_token,
+  });
+  if (error || !data.session?.expires_at) throw new Error("owner_session_failed");
+
+  cached = { supabase, userId, expiresAt: data.session.expires_at * 1000 };
+  return cached;
+}
+```
+
+```ts
+import "server-only";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/database.types";
+import { getOwnerDb, type OwnerDb } from "./owner";
+
+export type Mutation = {
+  table: "expenses" | "incomes" | "goal_contributions" | "tasks" | "courses" | "entity_links";
+  id: string;
+  before?: Json;
+  after: Json;
+  summary: Json;
+};
+
+export class ToolRejection extends Error {}
+
+const reply = (value: Json, isError = false): CallToolResult => ({
+  content: [{ type: "text", text: JSON.stringify(value) }],
+  isError,
+});
+
+export async function audited(
+  tool: string,
+  payload: Record<string, unknown>,
+  run: (db: OwnerDb) => Promise<Mutation>,
+): Promise<CallToolResult> {
+  const admin = createAdminClient();
+  const started = Date.now();
+  const key = typeof payload.idempotency_key === "string" ? payload.idempotency_key : null;
+  const db = await getOwnerDb();
+
+  if (key) {
+    const { data: previous } = await admin
+      .from("agent_logs")
+      .select("status, result_json")
+      .eq("user_id", db.userId)
+      .eq("idempotency_key", key)
+      .maybeSingle();
+    if (previous?.status === "success") return reply(previous.result_json ?? null);
+  }
+
+  const base = {
+    user_id: db.userId,
+    tool_name: tool,
+    payload_json: payload as Json,
+    client_name: "claude",
+  };
+
+  try {
+    const mutation = await run(db);
+    await admin.from("agent_logs").insert({
+      ...base,
+      status: "success",
+      result_json: mutation.summary,
+      target_table: mutation.table,
+      target_id: mutation.id,
+      before_json: mutation.before ?? null,
+      after_json: mutation.after,
+      idempotency_key: key,
+      duration_ms: Date.now() - started,
+    });
+    return reply(mutation.summary);
+  } catch (error) {
+    const rejected = error instanceof ToolRejection;
+    const message = rejected ? error.message : "Falha interna ao gravar no Meridian.";
+    await admin.from("agent_logs").insert({
+      ...base,
+      status: rejected ? "rejected" : "error",
+      error_message: (error instanceof Error ? error.message : String(error)).slice(0, 500),
+      duration_ms: Date.now() - started,
+    });
+    return reply({ error: message }, true);
+  }
+}
+```
+
+### Contrato das tools (Zod)
+
+O SDK recebe o formato bruto (`ZodRawShape`). Regras que cruzam campos são validadas de novo no handler com `z.object(shape).superRefine(...)`. Valores chegam em reais, como número (`100`, `35.9`), e viram centavos (`Math.round(v * 100)`) só na borda.
+
+Referências a entidades aceitam UUID ou nome (`"Óculos Novo"`). O `resolve.ts` procura por nome sem diferenciar maiúsculas nem acentos. Com zero ou mais de um resultado, a tool devolve `ToolRejection` listando as opções existentes, para o Claude perguntar em vez de adivinhar.
+
+```ts
+import { z } from "zod";
+
+const context = z.enum(["personal", "work", "freelance"]);
+const priority = z.enum(["low", "medium", "high", "critical"]);
+const isoDate = z.iso.date();
+const reais = z.number().positive().max(10_000_000);
+const reference = z.string().trim().min(1).max(120);
+const idempotencyKey = z.string().trim().min(8).max(80).optional();
+
+export const entityType = z.enum(["course", "project", "goal", "income_source", "client", "deal", "service", "note"]);
+
+export const dashboardSummaryShape = {
+  context: z.enum(["all", "personal", "work", "freelance"]).default("all"),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+};
+
+export const financialTransactionShape = {
+  type: z.enum(["expense", "income"]),
+  description: z.string().trim().min(1).max(200),
+  amount: reais,
+  date: isoDate.optional(),
+  context: context.default("personal"),
+  nature: z.enum(["fixed", "variable"]).default("variable"),
+  category: reference.optional(),
+  income_source: reference.optional(),
+  project: reference.optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const financialTransactionSchema = z.object(financialTransactionShape).superRefine((v, ctx) => {
+  if (v.type === "income" && !v.income_source) {
+    ctx.addIssue({ code: "custom", path: ["income_source"], message: "Ganho exige a fonte de renda" });
+  }
+  if (v.type === "income" && (v.category || v.project)) {
+    ctx.addIssue({ code: "custom", path: ["category"], message: "Categoria e projeto valem só para despesa" });
+  }
+});
+
+export const goalProgressShape = {
+  goal: reference,
+  mode: z.enum(["add", "set"]).default("add"),
+  amount: z.number().min(-10_000_000).max(10_000_000).refine((v) => v !== 0, "Valor não pode ser zero"),
+  note: z.string().trim().max(120).optional(),
+  date: isoDate.optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const kanbanTaskShape = {
+  action: z.enum(["create", "update", "move", "complete"]),
+  task: reference.optional(),
+  title: z.string().trim().min(1).max(160).optional(),
+  description: z.string().trim().max(2000).optional(),
+  project: reference.optional(),
+  context: context.optional(),
+  status: z.enum(["todo", "doing", "done"]).optional(),
+  priority: priority.optional(),
+  due_on: isoDate.nullable().optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const kanbanTaskSchema = z.object(kanbanTaskShape).superRefine((v, ctx) => {
+  if (v.action === "create" && !v.title) {
+    ctx.addIssue({ code: "custom", path: ["title"], message: "Informe o título da tarefa" });
+  }
+  if (v.action !== "create" && !v.task) {
+    ctx.addIssue({ code: "custom", path: ["task"], message: "Informe a tarefa (UUID ou título)" });
+  }
+  if (v.action === "move" && !v.status) {
+    ctx.addIssue({ code: "custom", path: ["status"], message: "Informe a coluna de destino" });
+  }
+});
+
+export const courseBacklogShape = {
+  title: z.string().trim().min(1).max(200),
+  url: z.url({ protocol: /^https?$/ }),
+  priority: priority.default("medium"),
+  estimated_hours: z.number().positive().max(9999).optional(),
+  provider: z.string().trim().max(80).optional(),
+  obsidian: z.string().trim().max(500).optional(),
+  context: context.default("personal"),
+  idempotency_key: idempotencyKey,
+};
+
+export const linkEntitiesShape = {
+  source_type: entityType,
+  source_id: z.uuid(),
+  target_type: entityType,
+  target_id: z.uuid(),
+  label: z.string().trim().min(1).max(40).optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const searchEntitiesShape = {
+  query: z.string().trim().min(2).max(80),
+  types: z.array(entityType).max(8).optional(),
+  limit: z.number().int().min(1).max(20).default(10),
+};
+```
+
+```ts
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  courseBacklogShape,
+  dashboardSummaryShape,
+  financialTransactionShape,
+  goalProgressShape,
+  kanbanTaskShape,
+  linkEntitiesShape,
+  searchEntitiesShape,
+} from "../schemas";
+import { addCourse } from "./courses";
+import { addTransaction } from "./finance";
+import { updateGoal } from "./goals";
+import { linkEntities, searchEntities } from "./graph";
+import { dashboardSummary } from "./summary";
+import { manageTask } from "./tasks";
+
+const read = { readOnlyHint: true, openWorldHint: false };
+const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+
+export function registerTools(server: McpServer) {
+  server.registerTool(
+    "get_dashboard_summary",
+    {
+      title: "Resumo do Meridian",
+      description: "Base segura, ganhos CLT e PJ, despesas do mês, objetivos ativos e tarefas pendentes.",
+      inputSchema: dashboardSummaryShape,
+      annotations: read,
+    },
+    dashboardSummary,
+  );
+  server.registerTool(
+    "search_entities",
+    {
+      title: "Buscar no Meridian",
+      description: "Encontra cursos, projetos, objetivos, fontes, clientes, negócios, serviços e notas por nome e devolve os IDs.",
+      inputSchema: searchEntitiesShape,
+      annotations: read,
+    },
+    searchEntities,
+  );
+  server.registerTool(
+    "add_financial_transaction",
+    {
+      title: "Lançar ganho ou despesa",
+      description: "Registra uma despesa (categoria e projeto opcionais) ou um ganho (fonte de renda obrigatória). Valores em reais.",
+      inputSchema: financialTransactionShape,
+      annotations: write,
+    },
+    addTransaction,
+  );
+  server.registerTool(
+    "update_goal_progress",
+    {
+      title: "Atualizar objetivo",
+      description: "Soma um aporte (add) ou ajusta o total guardado (set) de um objetivo da Trilha. Valores em reais.",
+      inputSchema: goalProgressShape,
+      annotations: write,
+    },
+    updateGoal,
+  );
+  server.registerTool(
+    "manage_kanban_task",
+    {
+      title: "Gerenciar tarefa",
+      description: "Cria, edita, move entre A fazer, Em curso e Entregue, ou conclui uma tarefa do Kanban.",
+      inputSchema: kanbanTaskShape,
+      annotations: write,
+    },
+    manageTask,
+  );
+  server.registerTool(
+    "add_course_to_backlog",
+    {
+      title: "Adicionar curso",
+      description: "Adiciona um curso ao backlog com URL, prioridade, horas estimadas e nota do Obsidian opcional.",
+      inputSchema: courseBacklogShape,
+      annotations: write,
+    },
+    addCourse,
+  );
+  server.registerTool(
+    "link_graph_entities",
+    {
+      title: "Conectar no grafo",
+      description: "Cria uma conexão manual entre dois itens da Visão Gráfica. Use search_entities para obter os IDs.",
+      inputSchema: linkEntitiesShape,
+      annotations: write,
+    },
+    linkEntities,
+  );
+}
+```
+
+Exemplo de handler, que vale de padrão para os demais:
+
+```ts
+import { createExpense } from "@/features/expenses/core";
+import { createIncome } from "@/features/income/core";
+import { todayISO } from "@/lib/dates";
+import { audited, ToolRejection } from "../audit";
+import { resolveCategory, resolveIncomeSource, resolveProject } from "../resolve";
+import { financialTransactionSchema } from "../schemas";
+
+export async function addTransaction(raw: unknown) {
+  const parsed = financialTransactionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return audited("add_financial_transaction", { raw } as Record<string, unknown>, async () => {
+      throw new ToolRejection(parsed.error.issues.map((i) => i.message).join("; "));
+    });
+  }
+  const input = parsed.data;
+  const cents = Math.round(input.amount * 100);
+  const date = input.date ?? todayISO();
+
+  return audited("add_financial_transaction", input, async (db) => {
+    if (input.type === "income") {
+      const source = await resolveIncomeSource(db, input.income_source!);
+      const row = await createIncome(db, {
+        source_id: source.id,
+        amount_cents: cents,
+        received_on: date,
+        competence_month: `${date.slice(0, 7)}-01`,
+        description: input.description,
+        context: input.context,
+      });
+      return {
+        table: "incomes",
+        id: row.id,
+        after: row,
+        summary: { lançado: "ganho", fonte: source.name, valor_cents: cents, data: date },
+      };
+    }
+
+    const category = input.category ? await resolveCategory(db, input.category) : null;
+    const project = input.project ? await resolveProject(db, input.project) : null;
+    const row = await createExpense(db, {
+      description: input.description,
+      amount_cents: cents,
+      occurred_on: date,
+      nature: input.nature,
+      context: project?.context ?? input.context,
+      category_id: category?.id ?? null,
+      project_id: project?.id ?? null,
+      source: "capture",
+    });
+    return {
+      table: "expenses",
+      id: row.id,
+      after: row,
+      summary: {
+        lançado: "despesa",
+        descrição: input.description,
+        valor_cents: cents,
+        categoria: category?.name ?? "sem categoria",
+        data: date,
+      },
+    };
+  });
+}
+```
+
+**Comportamento de cada tool**
+
+| Tool | Leitura/escrita | Regra |
+|---|---|---|
+| `get_dashboard_summary` | leitura | Base segura (`safe_monthly_base`), ganhos do mês por `income_kind` (CLT = garantido, PJ/freela = variável), despesas do mês e orçamento por categoria, objetivos ativos com `goal_progress`, tarefas `todo`/`doing` com prazo, pipeline aberto. Reusa as consultas da F8, que passam a receber o client por parâmetro. |
+| `search_entities` | leitura | Busca por nome em todos os tipos de `entity_type`, sem acento, até 20 resultados com `id`, `type`, `label` e contexto. |
+| `add_financial_transaction` | escrita | Despesa com `source = 'capture'`; o contexto vem do projeto quando informado. Ganho exige fonte existente: o MCP não cria fontes. |
+| `update_goal_progress` | escrita | `add` insere `goal_contributions` com o valor; `set` insere a diferença entre o alvo informado e o total atual, preservando o histórico. Devolve total, percentual e marco atingido. Objetivo `achieved` ou `archived` é rejeitado. |
+| `manage_kanban_task` | escrita | `create` entra no fim da coluna (`max(position) + 1024`). `move` e `complete` usam o RPC `move_task`, colocando a tarefa no fim da coluna de destino. Os gatilhos da F6 preenchem `completed_at` e herdam o contexto do projeto. Título ambíguo é rejeitado com a lista de candidatas. |
+| `add_course_to_backlog` | escrita | `obsidian` aceita caminho da nota ou link `obsidian://open?vault=...&file=...` e grava só o caminho em `obsidian_note`, como na F2. URL já cadastrada é rejeitada com o curso existente. |
+| `link_graph_entities` | escrita | Insere em `entity_links`. O gatilho da F9 valida a posse das duas pontas; `23503` e `23505` viram `ToolRejection` com mensagem clara. |
+
+**Desfazer (`/ajustes/agente`)**
+- Lista de `agent_logs` com filtro por tool e status, payload e resultado expansíveis.
+- Botão “Desfazer” em escritas com `status = 'success'`:
+  - em inserção, exclui `target_id`;
+  - em atualização de tarefa, restaura `before_json`.
+
+  Ambos rodam numa Server Action com a sessão do usuário (RLS) e marcam `reverted_at`.
+- Botão “Gerar novo segredo” só mostra as instruções de rotação: o valor vive na Vercel e o app não grava nem exibe o segredo.
+
+### Configuração do cliente
+
+**Claude Code** (escopo do usuário, fora do repositório público)
+
+```bash
+claude mcp add --transport http --scope user meridian https://<seu-app>.vercel.app/api/mcp --header "Authorization: Bearer <MERIDIAN_MCP_SECRET>"
+```
+
+**Claude Desktop** (`claude_desktop_config.json`, ponte local `mcp-remote` para servidor remoto com header)
+
+```json
+{
+  "mcpServers": {
+    "meridian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://<seu-app>.vercel.app/api/mcp",
+        "--header",
+        "Authorization:${MERIDIAN_AUTH}"
+      ],
+      "env": {
+        "MERIDIAN_AUTH": "Bearer <MERIDIAN_MCP_SECRET>"
+      }
+    }
+  }
+}
+```
+
+**Claude na Web e no Desktop via conector (F10.b)**: em Configurações → Conectores → Adicionar conector personalizado, informar `https://<seu-app>.vercel.app/api/mcp`; o login acontece pelo fluxo OAuth do Supabase com o mesmo e-mail permitido.
+
+### Critérios de aceite
+- Sem `Authorization`, com token errado ou com segredo de menos de 32 caracteres configurado: `401` com `WWW-Authenticate`, sem tocar o banco; tempo de resposta igual para token certo e errado no mesmo tamanho.
+- `MCP Inspector` (`npx @modelcontextprotocol/inspector`) lista as 7 tools com títulos, descrições, schemas e anotações `readOnlyHint`/`destructiveHint` corretas.
+- Pelo Claude Code e pelo Claude Desktop, frases como estas executam a tool certa e o item aparece na interface após recarregar:
+  - “gastei 35,90 no almoço”;
+  - “recebi 1.800 do freela da landing page”;
+  - “guarda 100 no Óculos Novo”;
+  - “move Wireframe para entregue”;
+  - “adiciona este curso: <url>”;
+  - “liga o curso X ao projeto Y”.
+- Toda chamada de escrita, inclusive rejeitada ou com erro, gera exatamente uma linha em `agent_logs` com payload, status e duração. Chamadas de leitura não geram log.
+- Mesma `idempotency_key` enviada duas vezes grava um único item e devolve o mesmo resultado.
+- Nome ambíguo (dois objetivos com “Óculos”) ou inexistente devolve `isError` com as opções, sem gravar.
+- `get_dashboard_summary` bate com os números da Visão Geral no mesmo contexto e mês.
+- “Desfazer” em `/ajustes/agente` remove o item criado (ou restaura a tarefa) e marca `reverted_at`; um segundo clique é bloqueado pela política.
+- pgTAP:
+  - `authenticated` não consegue `insert` nem `delete` em `agent_logs`, nem alterar outra coluna além de `reverted_at`;
+  - usuário B não lê os logs de A;
+  - `idempotency_key` duplicada falha com `23505`.
+- Teste no bundle: `SUPABASE_SECRET_KEY` e `MERIDIAN_MCP_SECRET` não aparecem em nenhum chunk do cliente.
+- Unitários: schemas Zod (valores, datas, superRefine), conversão reais→centavos, extração do caminho a partir de `obsidian://`, resolução por nome com acentos.
+- Cold start + chamada de escrita abaixo de 3 s; chamada quente abaixo de 800 ms.
+
+### Dependências
+F2, F3, F4, F5, F6 (tabelas e regras escritas pelas tools), F8 (consultas do resumo) e F9 (`entity_links`). F10.b depende de o OAuth Server do Supabase Auth estar disponível no plano gratuito.
+
+---
+
+## F11 · Ambient Player (Spotify em tempo real)
 
 **Objetivo:** detectar o que sua conta do Spotify está tocando em qualquer dispositivo e mostrar um mini-player discreto no Meridian (desktop e PWA), com trilha de progresso fluida e controles rápidos.
 
-**Por que aqui:** é independente dos módulos de dados e depende só do shell (F1). Fica depois do núcleo para não atrasar finanças e projetos, e antes da F11 para que o comportamento no PWA instalado (barra fixa, área segura, retomada ao voltar do segundo plano) seja validado junto com o release. Se quiser antecipar, pode correr em paralelo a partir da F1.
+**Por que aqui:** é independente dos módulos de dados e depende só do shell (F1). Fica depois do núcleo para não atrasar finanças e projetos, e antes da F12 para que o comportamento no PWA instalado (barra fixa, área segura, retomada ao voltar do segundo plano) seja validado junto com o release. Se quiser antecipar, pode correr em paralelo a partir da F1.
 
 ### Pré-requisitos e limites da Spotify (verificados em 2026)
 - Desde fevereiro de 2026, o **modo desenvolvimento exige Spotify Premium do dono do app** e aceita no máximo **5 usuários autorizados**. Para uso pessoal isso basta.
@@ -1708,7 +2313,7 @@ F1 (shell, Ajustes, Dialog). Pode correr em paralelo a qualquer fase depois da F
 
 ---
 
-## F11 · PWA, Offline, APK & Release 1.0
+## F12 · PWA, Offline, APK & Release 1.0
 
 **Objetivo:** app instalável sem barra de navegação, utilizável com rede instável, empacotável como APK e endurecido para uso diário.
 
@@ -1735,7 +2340,7 @@ share_target: {
 
 **Hardening**
 - Headers em `next.config.ts`: CSP (com `connect-src` do Supabase), `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`.
-- Rate limit simples por IP em `/api/heartbeat` e `/api/import` (tabela `rate_limits` ou memória por instância).
+- Rate limit simples por IP em `/api/heartbeat` e `/api/import` (tabela `rate_limits` ou memória por instância), e de 60 escritas por minuto em `/api/mcp`, contadas em `agent_logs`.
 - Supabase Advisors (security + performance) sem alertas; índices nas FKs indicados.
 - Exportação completa dos dados em JSON/CSV em `/ajustes` (portabilidade e backup manual).
 - Monitoramento: Vercel Analytics + Speed Insights (Hobby).
@@ -1748,11 +2353,11 @@ share_target: {
 - APK assinado instalado sem barra de URL (Digital Asset Links verificado).
 - Suíte E2E completa verde em Chromium e WebKit mobile.
 - Restauração completa a partir do backup semanal testada.
-- Grafo (F9) e player (F10) validados no app instalado: gestos de pinça e arrasto no grafo, barra do player acima da navegação inferior e retomada do polling ao voltar do segundo plano.
+- Grafo (F9) e player (F11) validados no app instalado: gestos de pinça e arrasto no grafo, barra do player acima da navegação inferior e retomada do polling ao voltar do segundo plano.
 - CSP libera `i.scdn.co` em `img-src` para as capas do Spotify e mantém as chamadas à Spotify só no servidor.
 
 ### Dependências
-F8, F9, F10.
+F8, F9, F10, F11.
 
 ---
 
@@ -1780,8 +2385,13 @@ F8, F9, F10.
 | VPS compartilhada com projeto de cliente | Meridian não hospeda nada nela; só monitora e usa o n8n como canal de alerta. Dados do servidor (IP, hostname) ficam no banco, nunca no repositório |
 | Acesso SSH por senha como root na VPS | Endurecimento descrito em `docs/VPS.md` antes da F7 |
 | Meridian fora do ar sem ninguém perceber | Watchdog externo no n8n chamando `/api/health` |
-| Spotify muda regras do modo desenvolvimento (Premium do dono, 5 usuários, endpoints removidos) | Teste rápido dos endpoints do player no início da F10; widget degrada para modo leitura ou some sem quebrar o app |
+| Spotify muda regras do modo desenvolvimento (Premium do dono, 5 usuários, endpoints removidos) | Teste rápido dos endpoints do player no início da F11; widget degrada para modo leitura ou some sem quebrar o app |
 | Conta Spotify Free | Controles escondidos em `403 PREMIUM_REQUIRED`; só leitura do que está tocando |
 | Vazamento do refresh token do Spotify | Tabela sem acesso pelo cliente, criptografia AES-256-GCM, chave só na Vercel, rotação gravada a cada renovação |
 | Polling consumindo a franquia da Vercel | Polling adaptativo, pausa com a aba oculta, respeito ao `Retry-After`; acompanhamento no painel de Usage |
 | Grafo lento em celular | Limite de nós por filtro de contexto/tipo, `cooldownTicks`, rótulos só a partir de zoom 1,5× e visão Lista como alternativa |
+| Vazamento do `MERIDIAN_MCP_SECRET` | Segredo só na Vercel e na configuração local do cliente, nunca em `.mcp.json` versionado; rotação trocando a variável; nenhuma tool exclui dados e toda escrita fica no log com “Desfazer” |
+| Claude grava algo errado por interpretar mal a frase ou por instruções embutidas em conteúdo lido (página de curso, descrição) | Tools só criam e atualizam, nomes ambíguos são rejeitados com opções, respostas devolvem o que foi gravado e `/ajustes/agente` permite desfazer |
+| Incompatibilidade entre `@modelcontextprotocol/sdk`, `mcp-handler` e Zod 4 | Versões fixadas e teste com o MCP Inspector no início da F10; se preciso, schemas MCP montados com `zod/v4` ou JSON Schema gerado por `z.toJSONSchema` |
+| Conector do claude.ai exige OAuth | Bearer cobre Claude Code e Desktop desde o primeiro deploy; OAuth do Supabase Auth na F10.b, só se disponível no Free Tier |
+| Sessões do dono acumulando em `auth.sessions` | Sessão reaproveitada por instância até expirar; limpeza semanal de sessões expiradas pelo `pg_cron` |
