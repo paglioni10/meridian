@@ -1,6 +1,6 @@
 # Meridian · Roadmap de Execução
 
-Plano técnico em 13 fases (F0–F12). Cada fase termina com um deploy em produção na Vercel e só avança quando todos os critérios de aceite estiverem verdes.
+Plano técnico em 14 fases (F0–F13). Cada fase termina com um deploy em produção na Vercel e só avança quando todos os critérios de aceite estiverem verdes.
 
 Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `tailwind.config.js`, `theme-*.css`, `logo/`.
 
@@ -18,22 +18,23 @@ Fonte de verdade visual: `identidade-visual/DESIGN_SYSTEM.md`, `tokens.css`, `ta
 | F5 | Trilha de Objetivos | F3 | 3–4 dias |
 | F6 | Projetos & Pipeline Freelance (Kanban + CRM) | F1, F3 | 5–6 dias |
 | F7 | Central de Infraestrutura (monitoramento + vencimentos) | F1 | 4–5 dias |
-| F8 | Quick Capture completo + Visão Geral | F2–F7 | 4–5 dias |
-| F9 | Grafo de Conexões (Knowledge & Life Graph) | F2, F3, F5, F6, F7, F8 | 5–6 dias |
-| F10 | Servidor MCP: Claude conectado ao Meridian | F8, F9 | 4–5 dias |
-| F11 | Ambient Player: Spotify em tempo real | F1 | 4–5 dias |
-| F12 | PWA, offline, APK (TWA), hardening e release 1.0 | F8, F9, F10, F11 | 4–5 dias |
+| F8 | Investimentos & Patrimônio (carteira, cotações, alocação, aportes) | F3, F4, F5, F7 | 5–6 dias |
+| F9 | Quick Capture completo + Visão Geral | F2–F8 | 4–5 dias |
+| F10 | Grafo de Conexões (Knowledge & Life Graph) | F2, F3, F5, F6, F7, F8, F9 | 5–6 dias |
+| F11 | Servidor MCP: Claude conectado ao Meridian | F9, F10 | 4–5 dias |
+| F12 | Ambient Player: Spotify em tempo real | F1 | 4–5 dias |
+| F13 | PWA, offline, APK (TWA), hardening e release 1.0 | F9, F10, F11, F12 | 4–5 dias |
 
 ```
-F0 ─ F1 ─┬─ F2 ───────────────┐
-         ├─ F3 ─┬─ F4 ────────┤
-         │      ├─ F5 ────────┼─ F8 ─ F9 ─ F10 ─┐
-         │      └─ F6 ────────┤                 ├─ F12
-         ├─ F7 ───────────────┘                 │
-         └─ F11 ────────────────────────────────┘
+F0 ─ F1 ─┬─ F2 ──────────────────────┐
+         ├─ F3 ─┬─ F4 ─┬─────────────┤
+         │      ├─ F5 ─┴─ F8 ────────┼─ F9 ─ F10 ─ F11 ─┐
+         │      └─ F6 ───────────────┤                  ├─ F13
+         ├─ F7 ──────────── (F8) ────┘                  │
+         └─ F12 ────────────────────────────────────────┘
 ```
 
-F2, F7, F11 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F11 (Spotify) está agendada depois do núcleo por prioridade, não por dependência.
+F2, F7, F12 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F8 (Investimentos) espera F4, F5 e F7. A F12 (Spotify) está agendada depois do núcleo por prioridade, não por dependência.
 
 ---
 
@@ -57,9 +58,10 @@ F2, F7, F11 e o bloco F3→(F4, F5, F6) podem correr em paralelo após F1. A F11
 | Ícone PWA | **Resolvido.** Ícones vêm exclusivamente de `logo/`; DS atualizado. |
 | Repositório | Público em `github.com/paglioni10/meridian`. Nenhum segredo, e-mail ou dado pessoal versionado; tudo em variáveis da Vercel/GitHub Secrets. |
 | Pacotes | `npm` (Node 26 não traz corepack/pnpm). Supabase CLI como devDependency (`npx supabase`). |
-| Grafo | `react-force-graph-2d` (Canvas + `d3-force`), carregado só na rota `/conexoes`. Arestas derivadas das FKs + tabela `entity_links` para conexões manuais (F9). |
-| Integrações OAuth | Tokens de terceiros (Spotify) em `integration_tokens`, sem acesso pelo cliente, criptografados com AES-256-GCM; rotas do servidor usam o client `admin` depois de validar a sessão (F11). |
-| Agente (MCP) | Servidor MCP remoto em `/api/mcp` (Streamable HTTP, `mcp-handler` + SDK oficial) com Bearer próprio. A chave secreta do Supabase só grava a auditoria e abre a sessão do dono; os dados passam pela RLS como na interface. Toda escrita vai para `agent_logs` e pode ser desfeita em `/ajustes/agente` (F10). |
+| Grafo | `react-force-graph-2d` (Canvas + `d3-force`), carregado só na rota `/conexoes`. Arestas derivadas das FKs + tabela `entity_links` para conexões manuais (F10). |
+| Integrações OAuth | Tokens de terceiros (Spotify) em `integration_tokens`, sem acesso pelo cliente, criptografados com AES-256-GCM; rotas do servidor usam o client `admin` depois de validar a sessão (F12). |
+| Agente (MCP) | Servidor MCP remoto em `/api/mcp` (Streamable HTTP, `mcp-handler` + SDK oficial) com Bearer próprio. A chave secreta do Supabase só grava a auditoria e abre a sessão do dono; os dados passam pela RLS como na interface. Toda escrita vai para `agent_logs` e pode ser desfeita em `/ajustes/agente` (F11). |
+| Investimentos | Valores em centavos; quantidade `numeric(28,10)` e preço unitário `numeric(24,8)` como exceção. Cotações gratuitas (brapi.dev para B3, CoinGecko para cripto) buscadas só no servidor e agendadas pelo `pg_cron`. Meta de alocação por classe. Objetivo vinculado lê o valor dos ativos, sem duplicar dados (F8). |
 | Exceções do DS | Nenhuma. Player do Spotify: versão editorial aprovada no handoff do Claude Design (12/11/2026). Grafo: forma/traço em vez de cores novas. Exceções só com registro explícito no `DESIGN_SYSTEM.md`. |
 
 ### Estrutura de pastas
@@ -1000,7 +1002,762 @@ F1. Independente dos módulos financeiros. Para os alertas: VPS endurecida confo
 
 ---
 
-## F8 · Quick Capture & Visão Geral
+## F8 · Investimentos & Patrimônio
+
+**Objetivo:** acompanhar patrimônio, aportes, proventos e alocação por classe num só lugar, com cotações gratuitas atualizadas sozinhas, sugestão de onde fazer o próximo aporte e ligação direta com a Trilha de Objetivos.
+
+**Por que aqui:** depende de Ganhos e Despesas (F3, F4) para calcular a sobra de caixa e da Trilha (F5) para o vínculo com objetivos. Reaproveita o `pg_cron` + Vault criados na F7. Entrar antes da Visão Geral (F9), do Grafo (F10) e do Servidor MCP (F11) faz essas fases já nascerem com patrimônio, nós de ativo e tools de investimento, em vez de receberem um retrofit.
+
+### Decisões e ajustes à especificação
+
+| Tema | Decisão |
+|---|---|
+| Rota | `/financas/investimentos`, nova aba na `tabbar` de Finanças, ao lado de Ganhos e Despesas. |
+| Classes | Enum `asset_class`: `cash` (Reserva/Liquidez), `fixed_income` (Renda Fixa), `equity` (Renda Variável), `international` (Internacional), `crypto` (Cripto). Rótulos em português só na interface. |
+| Meta de alocação | Fica por **classe**, em `investment_targets`, e não por ativo: o rebalanceamento compara classes, e uma classe pode ter meta antes de ter qualquer ativo (ex.: Cripto 5%). A soma das metas é validada em no máximo 100%. |
+| Dois modos de avaliação | `quote`: valor = quantidade × cotação (ações, FIIs, ETFs, BDRs, cripto). `balance`: valor = saldo informado (CDB, Tesouro, Caixinhas). Aporte e resgate em ativo `balance` ajustam o saldo sozinhos; `update_asset_balance` corrige com o valor do extrato. |
+| Quantidade e preço médio | Derivados das movimentações por gatilho, usando preço médio ponderado (padrão da Receita): o resgate reduz a quantidade e mantém o preço médio. Resgate maior que a posição é rejeitado. |
+| Dinheiro | Totais em `bigint` centavos, como no resto do app. Exceção registrada: quantidade `numeric(28,10)` (frações de cripto) e preço unitário `numeric(24,8)` (cotações com mais de 2 casas). |
+| Objetivo vinculado | Sem cópia de dados: quando um objetivo tem ativos vinculados, `goal_progress` passa a usar o valor atual desses ativos como “guardado”, e os aportes manuais ficam desativados nesse objetivo, para não contar o mesmo dinheiro duas vezes. |
+| Proventos | Dividendos e rendimentos ficam em `investment_transactions` e não entram em Ganhos: a sobra de caixa continua sendo só Ganhos − Despesas. |
+| Cotações | brapi.dev para B3 (ações, FIIs, ETFs e BDRs; Internacional entra por BDR/ETF listado na B3 ou por saldo manual) e CoinGecko (API Demo gratuita) para cripto, sempre em BRL e só no servidor. Agendamento pelo `pg_cron` do Supabase, padrão da F7, em vez de Vercel Cron. |
+| Gráfico de alocação | Barras horizontais com marcador de meta, e não rosca: o DS proíbe criar cores, e cinco fatias exigiriam cinco cores. A classe é identificada pelo rótulo, não pela cor. |
+| Fora do escopo | Imposto de renda, come-cotas, câmbio de ativos no exterior e importação de nota de corretagem. |
+
+### Banco
+
+```sql
+create type public.asset_class as enum ('cash', 'fixed_income', 'equity', 'international', 'crypto');
+create type public.valuation_mode as enum ('quote', 'balance');
+create type public.quote_source as enum ('brapi', 'coingecko', 'manual');
+create type public.investment_tx_type as enum ('contribution', 'withdrawal', 'dividend', 'yield');
+
+create table public.investment_assets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  context public.context_kind not null default 'personal',
+  ticker_or_name text not null check (length(btrim(ticker_or_name)) between 1 and 80),
+  asset_class public.asset_class not null,
+  institution text check (institution is null or length(btrim(institution)) between 1 and 80),
+  valuation_mode public.valuation_mode not null,
+  quote_source public.quote_source not null default 'manual',
+  quote_symbol text check (quote_symbol is null or quote_symbol ~ '^[A-Za-z0-9.\-]{1,40}$'),
+  quantity numeric(28,10) not null default 0 check (quantity >= 0),
+  avg_price numeric(24,8) not null default 0 check (avg_price >= 0),
+  invested_cents bigint not null default 0 check (invested_cents >= 0),
+  current_price numeric(24,8) check (current_price > 0),
+  current_balance_cents bigint check (current_balance_cents >= 0),
+  price_updated_at timestamptz,
+  linked_goal_id uuid,
+  archived_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (id, user_id),
+  unique nulls not distinct (user_id, ticker_or_name, institution),
+  check (quote_source = 'manual' or (valuation_mode = 'quote' and quote_symbol is not null)),
+  check (valuation_mode = 'quote' or current_price is null),
+  check (valuation_mode = 'balance' or current_balance_cents is null),
+  foreign key (linked_goal_id, user_id) references public.goals (id, user_id) on delete set null (linked_goal_id)
+);
+
+create table public.investment_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  asset_id uuid not null,
+  type public.investment_tx_type not null,
+  quantity numeric(28,10) check (quantity > 0),
+  unit_price numeric(24,8) check (unit_price > 0),
+  total_amount_cents bigint not null check (total_amount_cents > 0),
+  occurred_on date not null default ((now() at time zone 'America/Sao_Paulo')::date),
+  notes text check (notes is null or length(notes) <= 200),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (type in ('contribution', 'withdrawal') or (quantity is null and unit_price is null)),
+  foreign key (asset_id, user_id) references public.investment_assets (id, user_id) on delete cascade
+);
+
+create table public.investment_targets (
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  asset_class public.asset_class not null,
+  target_pct numeric(5,2) not null check (target_pct between 0 and 100),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, asset_class)
+);
+
+create table public.portfolio_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  month date not null check (month = date_trunc('month', month)::date),
+  total_invested_cents bigint not null,
+  total_equity_cents bigint not null,
+  contributions_cents bigint not null default 0,
+  dividends_cents bigint not null default 0,
+  by_class jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, month)
+);
+
+create index investment_assets_user_idx on public.investment_assets (user_id, asset_class) where archived_at is null;
+create index investment_assets_goal_idx on public.investment_assets (linked_goal_id) where linked_goal_id is not null;
+create index investment_assets_quote_idx on public.investment_assets (quote_source, quote_symbol) where quote_source <> 'manual' and archived_at is null;
+create index investment_transactions_asset_idx on public.investment_transactions (asset_id, occurred_on, created_at);
+create index investment_transactions_user_month_idx on public.investment_transactions (user_id, occurred_on);
+
+create or replace function private.investment_transactions_validate()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_mode public.valuation_mode;
+begin
+  select a.valuation_mode into v_mode
+  from public.investment_assets a
+  where a.id = new.asset_id and a.user_id = new.user_id;
+
+  if v_mode = 'quote' and new.type in ('contribution', 'withdrawal')
+    and (new.quantity is null or new.unit_price is null) then
+    raise exception 'quantity and unit_price are required' using errcode = '23514';
+  end if;
+
+  if v_mode = 'balance' then
+    new.quantity := null;
+    new.unit_price := null;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function private.investment_recompute(p_asset_id uuid)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_mode public.valuation_mode;
+  r record;
+  q numeric := 0;
+  avg numeric := 0;
+  cost bigint := 0;
+begin
+  select a.valuation_mode into v_mode from public.investment_assets a where a.id = p_asset_id;
+  if not found then
+    return;
+  end if;
+
+  for r in
+    select t.type, t.quantity, t.total_amount_cents
+    from public.investment_transactions t
+    where t.asset_id = p_asset_id and t.type in ('contribution', 'withdrawal')
+    order by t.occurred_on, t.created_at
+  loop
+    if v_mode = 'quote' then
+      if r.type = 'contribution' then
+        avg := (q * avg + r.total_amount_cents / 100.0) / (q + r.quantity);
+        q := q + r.quantity;
+      else
+        if r.quantity > q then
+          raise exception 'withdrawal exceeds position' using errcode = '23514';
+        end if;
+        q := q - r.quantity;
+      end if;
+      cost := round(q * avg * 100)::bigint;
+    else
+      cost := greatest(cost + case r.type when 'contribution' then r.total_amount_cents else -r.total_amount_cents end, 0);
+    end if;
+  end loop;
+
+  update public.investment_assets
+  set quantity = q,
+      avg_price = case when q = 0 then 0 else round(avg, 8) end,
+      invested_cents = cost
+  where id = p_asset_id;
+end;
+$$;
+
+create or replace function private.investment_transactions_sync()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_asset uuid := coalesce(new.asset_id, old.asset_id);
+  v_delta bigint := 0;
+begin
+  if tg_op in ('UPDATE', 'DELETE') and old.type in ('contribution', 'withdrawal') then
+    v_delta := v_delta - case old.type when 'contribution' then old.total_amount_cents else -old.total_amount_cents end;
+  end if;
+  if tg_op in ('INSERT', 'UPDATE') and new.type in ('contribution', 'withdrawal') then
+    v_delta := v_delta + case new.type when 'contribution' then new.total_amount_cents else -new.total_amount_cents end;
+  end if;
+
+  if v_delta <> 0 then
+    update public.investment_assets
+    set current_balance_cents = greatest(coalesce(current_balance_cents, 0) + v_delta, 0)
+    where id = v_asset and valuation_mode = 'balance';
+  end if;
+
+  perform private.investment_recompute(v_asset);
+  return null;
+end;
+$$;
+
+create trigger investment_transactions_validate
+  before insert or update on public.investment_transactions
+  for each row execute function private.investment_transactions_validate();
+
+create trigger investment_transactions_sync
+  after insert or delete or update of type, quantity, total_amount_cents, occurred_on on public.investment_transactions
+  for each row execute function private.investment_transactions_sync();
+
+create or replace function private.investment_targets_total()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if (select coalesce(sum(t.target_pct), 0) from public.investment_targets t where t.user_id = new.user_id) > 100 then
+    raise exception 'allocation targets exceed 100%%' using errcode = '23514';
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger investment_targets_total
+  after insert or update on public.investment_targets
+  deferrable initially deferred
+  for each row execute function private.investment_targets_total();
+
+create view public.v_investment_positions with (security_invoker = true) as
+select
+  a.id,
+  a.user_id,
+  a.context,
+  a.ticker_or_name,
+  a.asset_class,
+  a.institution,
+  a.valuation_mode,
+  a.quote_source,
+  a.quote_symbol,
+  a.quantity,
+  a.avg_price,
+  a.invested_cents,
+  a.current_price,
+  a.price_updated_at,
+  a.linked_goal_id,
+  case a.valuation_mode
+    when 'quote' then round(a.quantity * coalesce(a.current_price, a.avg_price) * 100)::bigint
+    else coalesce(a.current_balance_cents, a.invested_cents)
+  end as equity_cents
+from public.investment_assets a
+where a.archived_at is null;
+
+create or replace function public.portfolio_summary(
+  p_context text default 'all',
+  p_month date default date_trunc('month', (now() at time zone 'America/Sao_Paulo'))::date
+)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  with pos as (
+    select p.*
+    from public.v_investment_positions p
+    where p_context = 'all' or p.context::text = p_context
+  ),
+  totals as (
+    select coalesce(sum(equity_cents), 0)::bigint as equity, coalesce(sum(invested_cents), 0)::bigint as invested
+    from pos
+  ),
+  classes as (
+    select
+      c.asset_class,
+      coalesce(sum(p.equity_cents), 0)::bigint as equity,
+      coalesce(max(t.target_pct), 0) as target_pct,
+      count(p.id)::int as assets
+    from unnest(enum_range(null::public.asset_class)) as c(asset_class)
+    left join pos p on p.asset_class = c.asset_class
+    left join public.investment_targets t on t.asset_class = c.asset_class
+    group by c.asset_class
+  ),
+  month_flows as (
+    select
+      coalesce(sum(x.total_amount_cents) filter (where x.type in ('dividend', 'yield')), 0)::bigint as income,
+      coalesce(sum(case x.type when 'contribution' then x.total_amount_cents when 'withdrawal' then -x.total_amount_cents end), 0)::bigint as net_contribution
+    from public.investment_transactions x
+    join pos p on p.id = x.asset_id
+    where x.occurred_on >= p_month and x.occurred_on < (p_month + interval '1 month')::date
+  )
+  select jsonb_build_object(
+    'equity_cents', t.equity,
+    'invested_cents', t.invested,
+    'result_cents', t.equity - t.invested,
+    'return_pct', case when t.invested > 0 then round(100.0 * (t.equity - t.invested) / t.invested, 2) end,
+    'income_month_cents', f.income,
+    'net_contribution_month_cents', f.net_contribution,
+    'classes', (
+      select jsonb_agg(jsonb_build_object(
+        'class', c.asset_class,
+        'assets', c.assets,
+        'equity_cents', c.equity,
+        'current_pct', case when t.equity > 0 then round(100.0 * c.equity / t.equity, 2) else 0 end,
+        'target_pct', c.target_pct,
+        'gap_cents', round(t.equity * c.target_pct / 100.0)::bigint - c.equity
+      ) order by c.asset_class)
+      from classes c
+    )
+  )
+  from totals t, month_flows f;
+$$;
+
+create or replace function private.refresh_portfolio_snapshots(
+  p_month date default date_trunc('month', (now() at time zone 'America/Sao_Paulo'))::date
+)
+returns void
+language sql
+set search_path = ''
+as $$
+  insert into public.portfolio_snapshots (
+    user_id, month, total_invested_cents, total_equity_cents, contributions_cents, dividends_cents, by_class
+  )
+  select
+    p.user_id,
+    p_month,
+    sum(p.invested_cents)::bigint,
+    sum(p.equity_cents)::bigint,
+    coalesce((
+      select sum(case x.type when 'contribution' then x.total_amount_cents else -x.total_amount_cents end)
+      from public.investment_transactions x
+      where x.user_id = p.user_id
+        and x.type in ('contribution', 'withdrawal')
+        and x.occurred_on >= p_month and x.occurred_on < (p_month + interval '1 month')::date
+    ), 0)::bigint,
+    coalesce((
+      select sum(x.total_amount_cents)
+      from public.investment_transactions x
+      where x.user_id = p.user_id
+        and x.type in ('dividend', 'yield')
+        and x.occurred_on >= p_month and x.occurred_on < (p_month + interval '1 month')::date
+    ), 0)::bigint,
+    (
+      select jsonb_object_agg(b.asset_class, b.cents)
+      from (
+        select v.asset_class, sum(v.equity_cents)::bigint as cents
+        from public.v_investment_positions v
+        where v.user_id = p.user_id
+        group by v.asset_class
+      ) b
+    )
+  from public.v_investment_positions p
+  group by p.user_id
+  on conflict (user_id, month) do update set
+    total_invested_cents = excluded.total_invested_cents,
+    total_equity_cents = excluded.total_equity_cents,
+    contributions_cents = excluded.contributions_cents,
+    dividends_cents = excluded.dividends_cents,
+    by_class = excluded.by_class,
+    updated_at = now();
+$$;
+
+select private.secure_table('public.investment_assets', true);
+select private.secure_table('public.investment_transactions', true);
+select private.secure_table('public.investment_targets', true);
+select private.secure_table('public.portfolio_snapshots', true);
+
+grant select, insert, delete on public.investment_assets to authenticated;
+grant update (
+  context, ticker_or_name, asset_class, institution, valuation_mode, quote_source, quote_symbol,
+  current_price, current_balance_cents, price_updated_at, linked_goal_id, archived_at
+) on public.investment_assets to authenticated;
+grant select, insert, delete on public.investment_transactions to authenticated;
+grant update (type, quantity, unit_price, total_amount_cents, occurred_on, notes) on public.investment_transactions to authenticated;
+grant select, insert, update, delete on public.investment_targets to authenticated;
+grant select on public.portfolio_snapshots to authenticated;
+grant select on public.v_investment_positions to authenticated;
+grant execute on function public.portfolio_summary(text, date) to authenticated;
+grant select, update (current_price, price_updated_at) on public.investment_assets to service_role;
+
+select cron.schedule(
+  'investments-sync',
+  '45 21 * * 1-5',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'app_url') || '/api/investments/sync',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'),
+      'Content-Type', 'application/json'
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 60000
+  );
+  $$
+);
+
+select cron.schedule('investments-snapshots', '50 2 * * *', $$ select private.refresh_portfolio_snapshots(); $$);
+select cron.schedule(
+  'investments-snapshots-close',
+  '55 2 1 * *',
+  $$ select private.refresh_portfolio_snapshots((date_trunc('month', (now() at time zone 'America/Sao_Paulo')) - interval '1 month')::date); $$
+);
+```
+
+`quantity`, `avg_price` e `invested_cents` ficam fora do `grant update`, então só os gatilhos os alteram. `asset_id` também fica fora do grant da movimentação: para trocar o ativo, exclui-se e lança-se de novo, o que mantém o recálculo correto.
+
+**Vínculo com a Trilha de Objetivos.** A migration recria `goal_progress` trocando apenas a CTE `saved`:
+
+```sql
+saved as (
+  select
+    g.id as goal_id,
+    case
+      when exists (select 1 from public.v_investment_positions p where p.linked_goal_id = g.id)
+        then (select coalesce(sum(p.equity_cents), 0) from public.v_investment_positions p where p.linked_goal_id = g.id)
+      else (select coalesce(sum(c.amount_cents), 0) from public.goal_contributions c where c.goal_id = g.id)
+    end::bigint as cents,
+    exists (select 1 from public.v_investment_positions p where p.linked_goal_id = g.id) as from_investments
+  from public.goals g
+)
+```
+
+A coluna `from_investments` passa a sair na função. Na Trilha, o objetivo mostra “Saldo vindo de: IVVB11, Caixinha Viagem” no lugar do botão de aporte.
+
+**Grafo (F10).** `entity_type` ganha `asset`; `v_graph_nodes` ganha os ativos não arquivados (rótulo = ticker/nome, estado = classe); `v_graph_edges` ganha a aresta derivada ativo → objetivo (`financia`); e `investment_assets` ganha o gatilho `entity_links_cleanup('asset')`. Detalhado na F10.
+
+### Cotações: `/api/investments/sync`
+
+```
+app/api/investments/sync/route.ts
+features/investments/quotes.ts
+features/investments/sync.ts
+features/investments/rebalance.ts
+features/investments/schema.ts
+features/investments/queries.ts
+features/investments/actions.ts
+features/investments/core.ts
+app/(app)/financas/investimentos/page.tsx
+app/(app)/financas/investimentos/investments-ui.tsx
+app/(app)/financas/investimentos/allocation.tsx
+app/(app)/financas/investimentos/contribution-chart.tsx
+```
+
+`proxy.ts` exclui `api/investments/sync` do matcher: a rota aceita o Bearer do `pg_cron` (todos os usuários, client admin) ou a sessão do usuário (botão “Atualizar cotações”, só os próprios ativos, via RLS).
+
+| Variável | Uso |
+|---|---|
+| `BRAPI_TOKEN` | token gratuito da brapi.dev |
+| `COINGECKO_DEMO_KEY` | chave Demo gratuita da CoinGecko |
+| `CRON_SECRET` | já existente (F7) |
+
+```ts
+import { createHash, timingSafeEqual } from "node:crypto";
+import { NextResponse, type NextRequest } from "next/server";
+import { syncQuotes } from "@/features/investments/sync";
+import { serverEnv } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+
+export const maxDuration = 60;
+
+const digest = (value: string) => createHash("sha256").update(value).digest();
+
+function isCron(request: NextRequest) {
+  const secret = serverEnv().CRON_SECRET;
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  return Boolean(secret && token && timingSafeEqual(digest(token), digest(secret)));
+}
+
+export async function POST(request: NextRequest) {
+  if (isCron(request)) {
+    return NextResponse.json(await syncQuotes(createAdminClient(), { minAgeMinutes: 0 }));
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  return NextResponse.json(await syncQuotes(supabase, { minAgeMinutes: 10 }));
+}
+```
+
+```ts
+import "server-only";
+import { z } from "zod";
+import { serverEnv } from "@/lib/env";
+
+const TIMEOUT_MS = 8000;
+
+const brapiSchema = z.object({
+  results: z.array(z.object({ symbol: z.string(), regularMarketPrice: z.number().positive() })).min(1),
+});
+
+const coingeckoSchema = z.record(z.string(), z.object({ brl: z.number().positive() }));
+
+export type Quote = { symbol: string; price: number };
+
+export async function fetchBrapi(symbol: string): Promise<Quote> {
+  const response = await fetch(`https://brapi.dev/api/quote/${encodeURIComponent(symbol)}`, {
+    headers: { Authorization: `Bearer ${serverEnv().BRAPI_TOKEN}` },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`brapi ${response.status} ${symbol}`);
+  const { results } = brapiSchema.parse(await response.json());
+  return { symbol, price: results[0].regularMarketPrice };
+}
+
+export async function fetchCoingecko(ids: string[]): Promise<Quote[]> {
+  if (ids.length === 0) return [];
+  const url = new URL("https://api.coingecko.com/api/v3/simple/price");
+  url.searchParams.set("ids", ids.join(","));
+  url.searchParams.set("vs_currencies", "brl");
+  const response = await fetch(url, {
+    headers: { "x-cg-demo-api-key": serverEnv().COINGECKO_DEMO_KEY },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`coingecko ${response.status}`);
+  const data = coingeckoSchema.parse(await response.json());
+  return ids.filter((id) => data[id]).map((id) => ({ symbol: id, price: data[id].brl }));
+}
+```
+
+```ts
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
+import { fetchBrapi, fetchCoingecko, type Quote } from "./quotes";
+
+type Db = SupabaseClient<Database>;
+
+export type SyncResult = { updated: number; skipped: number; failed: string[] };
+
+async function inBatches<T, R>(items: T[], size: number, run: (item: T) => Promise<R>) {
+  const results: PromiseSettledResult<R>[] = [];
+  for (let i = 0; i < items.length; i += size) {
+    results.push(...(await Promise.allSettled(items.slice(i, i + size).map(run))));
+  }
+  return results;
+}
+
+export async function syncQuotes(db: Db, { minAgeMinutes }: { minAgeMinutes: number }): Promise<SyncResult> {
+  const threshold = new Date(Date.now() - minAgeMinutes * 60_000).toISOString();
+  const { data: assets, error } = await db
+    .from("investment_assets")
+    .select("quote_source, quote_symbol, price_updated_at")
+    .in("quote_source", ["brapi", "coingecko"])
+    .is("archived_at", null);
+  if (error) throw new Error(error.message);
+
+  const stale = assets.filter((a) => !a.price_updated_at || a.price_updated_at < threshold);
+  const brapi = [...new Set(stale.filter((a) => a.quote_source === "brapi").map((a) => a.quote_symbol!.toUpperCase()))];
+  const coingecko = [...new Set(stale.filter((a) => a.quote_source === "coingecko").map((a) => a.quote_symbol!))];
+
+  const failed: string[] = [];
+  const quotes: { source: "brapi" | "coingecko"; quote: Quote }[] = [];
+
+  const brapiResults = await inBatches(brapi, 4, fetchBrapi);
+  brapiResults.forEach((r, i) => {
+    if (r.status === "fulfilled") quotes.push({ source: "brapi", quote: r.value });
+    else failed.push(brapi[i]);
+  });
+
+  try {
+    const coins = await fetchCoingecko(coingecko);
+    coins.forEach((quote) => quotes.push({ source: "coingecko", quote }));
+    coingecko.filter((id) => !coins.some((c) => c.symbol === id)).forEach((id) => failed.push(id));
+  } catch {
+    failed.push(...coingecko);
+  }
+
+  const now = new Date().toISOString();
+  const updates = await Promise.all(
+    quotes.map(({ source, quote }) =>
+      db
+        .from("investment_assets")
+        .update({ current_price: quote.price, price_updated_at: now })
+        .eq("quote_source", source)
+        .ilike("quote_symbol", quote.symbol)
+        .is("archived_at", null),
+    ),
+  );
+
+  return {
+    updated: updates.filter((u) => !u.error).length,
+    skipped: assets.length - stale.length,
+    failed,
+  };
+}
+```
+
+Antes de cada busca, o cliente valida o símbolo pelo `check` da tabela, e o servidor monta a URL só com `encodeURIComponent`. Respostas fora do schema Zod contam como falha, e a cotação antiga é mantida. Um ativo com cotação mais velha que 3 dias úteis aparece com o rótulo “COTAÇÃO DE <data>”.
+
+### Rebalanceamento
+
+`features/investments/rebalance.ts` é uma função pura e testável: recebe as classes de `portfolio_summary` e o valor do próximo aporte, e distribui o aporte entre as classes com `gap_cents > 0`, proporcionalmente à falta. A sobra de arredondamento vai para a classe com maior falta. Não sugere vender nada. Se todas as classes estão na meta, distribui o aporte pelas próprias metas.
+
+### Expansão do Servidor MCP (F11)
+
+Três tools novas entram no contrato da F11, todas com o mesmo `audited` (log, idempotência, desfazer):
+
+```ts
+export const assetClass = z.enum(["cash", "fixed_income", "equity", "international", "crypto"]);
+
+export const portfolioSummaryShape = {
+  context: z.enum(["all", "personal", "work", "freelance"]).default("all"),
+  next_contribution: z.number().positive().max(10_000_000).optional(),
+};
+
+export const investmentTransactionShape = {
+  asset: reference,
+  type: z.enum(["contribution", "withdrawal", "dividend", "yield"]),
+  amount: reais.optional(),
+  quantity: z.number().positive().max(1_000_000_000).optional(),
+  unit_price: z.number().positive().max(1_000_000_000).optional(),
+  date: isoDate.optional(),
+  notes: z.string().trim().max(200).optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const investmentTransactionSchema = z.object(investmentTransactionShape).superRefine((v, ctx) => {
+  const hasTrade = v.quantity !== undefined && v.unit_price !== undefined;
+  if (v.amount === undefined && !hasTrade) {
+    ctx.addIssue({ code: "custom", path: ["amount"], message: "Informe o valor ou quantidade e preço" });
+  }
+  if ((v.type === "dividend" || v.type === "yield") && (v.quantity !== undefined || v.unit_price !== undefined)) {
+    ctx.addIssue({ code: "custom", path: ["quantity"], message: "Provento usa só o valor" });
+  }
+});
+
+export const assetBalanceShape = {
+  asset: reference,
+  balance: z.number().min(0).max(1_000_000_000).optional(),
+  price: z.number().positive().max(1_000_000_000).optional(),
+  idempotency_key: idempotencyKey,
+};
+
+export const assetBalanceSchema = z.object(assetBalanceShape).superRefine((v, ctx) => {
+  if ((v.balance === undefined) === (v.price === undefined)) {
+    ctx.addIssue({ code: "custom", path: ["balance"], message: "Informe saldo (renda fixa) ou cotação (renda variável)" });
+  }
+});
+```
+
+| Tool | Leitura/escrita | Regra |
+|---|---|---|
+| `get_portfolio_summary` | leitura | `portfolio_summary` + rentabilidade do mês pelos snapshots. Com `next_contribution`, devolve a distribuição de `rebalance.ts` (“aporte 1.000: 700 em Renda Fixa, 300 em Internacional”). |
+| `add_investment_transaction` | escrita | Resolve o ativo por UUID, ticker ou nome. Em ativo `quote`, aporte e resgate exigem quantidade e preço (total = quantidade × preço quando `amount` não vier). Resgate acima da posição devolve a posição atual. |
+| `update_asset_balance` | escrita | `balance` só para ativo `balance`; `price` só para ativo `quote` com `quote_source = 'manual'`. Grava `before_json` com o valor anterior para o “Desfazer”. |
+
+`agent_logs.target_table` aceita também `investment_transactions` e `investment_assets`.
+
+### Interface
+
+**Página `/financas/investimentos`**
+- `PageHead` com título “Investimentos” e meta “Cotações de 13/11, 18:45”.
+  - Ações: “Novo ativo” (primário), “Lançar movimento”, “Atualizar cotações” (ghost, `aria-busy` durante a busca, toast com atualizados e falhas) e “Metas de alocação”.
+- O alternador de contexto filtra tudo; o padrão de um ativo novo é Pessoal.
+- Estado vazio: explica os dois modos (cotação automática e saldo manual) e oferece “Novo ativo”.
+
+**Stats (`.stats-grid`)**
+
+| Stat | Valor | Hint |
+|---|---|---|
+| Patrimônio (`size="display"`) | soma de `equity_cents` | “Aportado 42.000,00” |
+| Resultado | `+3.150,00` / `−820,00`, sempre `--ink`, só com sinal | “+7,5% desde o início” |
+| Rentabilidade no mês | `+1,2%` (variação do patrimônio sem os aportes do mês) | “Mês anterior +0,8%” |
+| Proventos no mês | soma de dividendos e rendimentos | “12 meses: 1.940,00” |
+
+**Alocação (`AllocationBars`)**
+- Uma linha por classe:
+  - à esquerda, o rótulo em `--font-data` maiúsculo;
+  - no centro, a trilha com filete de 1px `--rule`, preenchimento `--ink` até o % atual e um marcador vertical de 2px `--blue` no % da meta;
+  - à direita, “32% · meta 40%”.
+- Abaixo de cada barra, a falta em texto: “Aportar 1.240,00”, “Na meta” ou “Acima +12 p.p.”. O “Acima” fica em `--red` só quando passa de 5 p.p., do mesmo jeito que o estouro de orçamento.
+- `SimulateContribution`: campo de valor + lista com o resultado de `rebalance.ts`, recalculada a cada digitação, sem ida ao servidor.
+- Sem metas cadastradas, o bloco mostra só o % atual e o link “Definir metas”.
+- Acessível: cada linha tem `role="meter"` com `aria-valuenow` e `aria-valuetext` (“Renda Fixa 32%, meta 40%”).
+
+**Carteira (`Portfolio`)**
+- Desktop (≥ 1024px): tabela `.row` em grid, agrupada por classe com subtotal.
+  - Colunas: Ativo (ticker em mono) | Instituição | Classe | Qtd | Preço médio | Cotação/Saldo | Valor | Variação.
+  - Variação = (valor ÷ aportado − 1), com sinal e sem cor.
+  - Ordena por valor e aceita clique no cabeçalho para ordenar por outra coluna.
+- Mobile/PWA: lista com duas linhas por ativo, alvo de toque ≥ 44px.
+  - Linha 1: ticker e valor.
+  - Linha 2: classe · instituição e variação.
+- Clique ou toque abre o `AssetDialog`:
+  - resumo, histórico de movimentações (editar/excluir), “Lançar movimento” já com o ativo, “Atualizar saldo” (modo `balance`) ou “Informar cotação” (fonte manual);
+  - também o objetivo vinculado e “Arquivar”.
+- Ativo `balance` sem atualização há mais de 35 dias mostra “SALDO DE <data>”.
+
+**Histórico (`ContributionChart`)**
+- SVG próprio, com largura medida por `ResizeObserver`, no padrão da F4.
+- Barras pareadas por mês:
+  - aporte líquido em bloco `--ink`;
+  - sobra de caixa (Ganhos − Despesas, via `income_series` e `expense_series`) em contorno 1px `--ink`;
+  - valores negativos abaixo da linha base.
+- 12 meses no desktop e 6 no mobile, com rolagem para os anteriores.
+- Legenda em texto. Botão “Ver tabela” troca o gráfico por uma tabela acessível com os mesmos números.
+- Linha da sobra acumulada não aportada: “Sobrou 3.400,00 que não foi investido em 2026”.
+
+**Evolução (`EquityLine`)**: linha 1px `--ink` do patrimônio pelos `portfolio_snapshots` e linha tracejada do total aportado. Mostra a partir de 2 snapshots.
+
+**Formulários (Dialog, `useActionState`, valores preservados em erro)**
+- `AssetForm`, com estes campos:
+  - nome/ticker;
+  - classe (select);
+  - instituição;
+  - modo de avaliação, em segmented “Cotação automática” | “Saldo manual”;
+  - fonte (B3 | Cripto | Manual) e símbolo, com o botão “Testar cotação”, que chama a brapi ou a CoinGecko e mostra o preço antes de salvar;
+  - objetivo vinculado;
+  - contexto.
+- `TransactionForm`:
+  - tipo em segmented (Aporte | Resgate | Provento | Rendimento);
+  - data;
+  - quantidade e preço unitário (só no modo cotação, com o total calculado e editável para incluir taxas);
+  - total e observação.
+- `TargetsForm`: cinco campos em %, soma ao vivo (“Total 95% · faltam 5 p.p.”), salvar bloqueado acima de 100.
+
+**Integrações com outras telas**
+- Trilha de Objetivos: objetivo com ativos vinculados mostra a origem do saldo e um link para os ativos.
+- Visão Geral (F9): stat “Patrimônio” com resultado no hint e linha “Próximo aporte sugerido”.
+- Quick Capture (F9): `a: 500 ivvb11` lança um aporte, e a quantidade é pedida na prévia quando o ativo é do modo cotação.
+
+### Critérios de aceite
+- pgTAP:
+  - preço médio ponderado com 3 aportes e 1 resgate bate com o cálculo manual (casos com frações de cripto);
+  - resgate acima da posição falha com `23514`;
+  - aporte em ativo `balance` aumenta o saldo e excluir o aporte desfaz;
+  - `authenticated` não altera `quantity`, `avg_price` nem `invested_cents`;
+  - metas somando 101% falham;
+  - ativo vinculado a objetivo de outro usuário falha com `23503`;
+  - excluir o objetivo deixa `linked_goal_id` nulo;
+  - usuário B não vê ativos, movimentações nem snapshots de A;
+  - `portfolio_summary` com classes vazias devolve as cinco classes.
+- `goal_progress` de objetivo com ativo vinculado acompanha a cotação; o objetivo sem vínculo continua usando os aportes manuais.
+- Unitários:
+  - `rebalance.ts`: falta proporcional, arredondamento sem perder centavos, tudo na meta, aporte maior que a soma das faltas;
+  - parsers das respostas da brapi e da CoinGecko com fixtures de sucesso, erro e formato inesperado;
+  - schemas Zod do formulário e das tools.
+- “Atualizar cotações” com 10 ativos B3 e 3 cripto termina em menos de 10 s.
+  - Um símbolo inválido aparece em “falhas” sem impedir os outros.
+  - Um segundo clique em menos de 10 minutos não chama as APIs.
+- O cron de dias úteis atualiza as cotações e o `price_updated_at`; o snapshot diário e o de fechamento do mês aparecem em `portfolio_snapshots`.
+- Os números dos stats batem com a soma da carteira, e a sobra do gráfico bate com Ganhos − Despesas do mês.
+- Alocação com `role="meter"` legível por leitor de tela; gráfico com alternativa em tabela; nenhuma cor nova (verificado contra os tokens).
+- Mobile 375px: stats 2×2, barras e lista sem rolagem horizontal da página, `AssetDialog` com rolagem interna.
+- `BRAPI_TOKEN` e `COINGECKO_DEMO_KEY` ausentes de qualquer chunk do cliente.
+
+### Dependências
+F3, F4 (sobra de caixa), F5 (vínculo com objetivos) e F7 (`pg_cron` + Vault com `app_url` e `cron_secret`).
+
+---
+
+## F9 · Quick Capture & Visão Geral
 
 **Objetivo:** capturar qualquer coisa em segundos de qualquer tela e consolidar todos os módulos numa página inicial editorial filtrada pelo contexto ativo.
 
@@ -1013,6 +1770,7 @@ F1. Independente dos módulos financeiros. Para os alertas: VPS endurecida confo
 | `t: revisar proposta !alta ^sexta` | tarefa (prioridade e prazo) |
 | `https://...` | link: curso se domínio de curso conhecido, senão inbox |
 | `m: notebook 750` | meta nova com alvo |
+| `a: 500 ivvb11` | aporte no ativo (quantidade pedida na prévia se o ativo é por cotação) |
 | texto livre | ideia na inbox |
 
 `@pessoal`, `@trabalho`, `@freelance` sobrescrevem o contexto ativo.
@@ -1022,7 +1780,7 @@ F1. Independente dos módulos financeiros. Para os alertas: VPS endurecida confo
 **Banco**
 
 ```sql
-create type capture_kind as enum ('idea', 'expense', 'income', 'task', 'link', 'goal');
+create type capture_kind as enum ('idea', 'expense', 'income', 'task', 'link', 'goal', 'investment');
 
 create table inbox_items (
   id uuid primary key default gen_random_uuid(),
@@ -1043,14 +1801,14 @@ create index inbox_pending_idx on inbox_items (user_id, created_at desc) where p
 
 **Next.js**
 - `lib/capture/parse.ts`: parser puro e testável que retorna `{ kind, payload, context }`.
-- Server Action `capture(raw)`: grava sempre em `inbox_items` e, quando o parse é inequívoco, roteia para a tabela de destino (`expenses`, `incomes`, `tasks`, `courses`, `goals`) preenchendo `routed_*`.
+- Server Action `capture(raw)`: grava sempre em `inbox_items` e, quando o parse é inequívoco, roteia para a tabela de destino (`expenses`, `incomes`, `tasks`, `courses`, `goals`, `investment_transactions`) preenchendo `routed_*`.
 - Server Actions `triageItem(id, target)`, `discardItem(id)`.
 - Página `/` (Visão Geral) com queries paralelas (`Promise.all`) e `Suspense` por seção.
 
 **Componentes**
 - `QuickCapture`: `Dialog` aberto por `Ctrl/Cmd + K` ou pelo `capture-fab` no mobile; prévia ao vivo do destino interpretado; Enter confirma, Esc fecha; foco retorna ao elemento anterior.
 - `InboxTriage` (`/inbox`): itens não roteados com ações de envio.
-- Visão Geral: `PageHead` com data da edição; stats Base segura · Saldo do mês · Pipeline aberto · Serviços online; seções Vencimentos próximos, Tarefas em curso, Metas ativas, Cursos em andamento, Últimas despesas.
+- Visão Geral: `PageHead` com data da edição; stats Base segura · Saldo do mês · Patrimônio · Pipeline aberto · Serviços online; seções Vencimentos próximos, Tarefas em curso, Metas ativas, Cursos em andamento, Últimas despesas.
 
 ### Critérios de aceite
 - Parser com testes para todas as linhas da tabela de sintaxe, valores com e sem centavos, tags inexistentes e entradas ambíguas.
@@ -1060,15 +1818,15 @@ create index inbox_pending_idx on inbox_items (user_id, created_at desc) where p
 - Alternador de contexto altera todas as seções da Visão Geral.
 
 ### Dependências
-F2, F3, F4, F5, F6, F7 (destinos da captura e fontes da Visão Geral).
+F2, F3, F4, F5, F6, F7, F8 (destinos da captura e fontes da Visão Geral).
 
 ---
 
-## F9 · Grafo de Conexões (Knowledge & Life Graph)
+## F10 · Grafo de Conexões (Knowledge & Life Graph)
 
 **Objetivo:** visualizar, numa rede interativa inspirada no Graph View do Obsidian, como cursos, projetos, objetivos, finanças, clientes, servidores e notas se conectam, com física de arrastar, zoom, pan, destaque de vizinhança e um painel lateral para agir sobre cada nó.
 
-**Por que aqui:** o grafo só tem valor quando as entidades existem. As tabelas de cursos (F2), ganhos (F3), objetivos (F5), projetos/clientes/deals (F6) e serviços (F7) precisam estar no banco, e a Visão Geral (F8) já consolida os dados. As views do grafo referenciam essas tabelas, então a migration só pode rodar depois delas.
+**Por que aqui:** o grafo só tem valor quando as entidades existem. As tabelas de cursos (F2), ganhos (F3), objetivos (F5), projetos/clientes/deals (F6), serviços (F7) e ativos de investimento (F8) precisam estar no banco, e a Visão Geral (F9) já consolida os dados. As views do grafo referenciam essas tabelas, então a migration só pode rodar depois delas.
 
 ### Modelo de dados
 
@@ -1081,7 +1839,7 @@ Notas do Obsidian viram entidade própria (`obsidian_notes`), registradas automa
 Como a ligação é polimórfica (o tipo da ponta varia), não existe FK nativa: um gatilho valida que as duas pontas existem e pertencem ao mesmo usuário, e gatilhos de exclusão removem as arestas órfãs.
 
 ```sql
-create type public.entity_type as enum ('course', 'project', 'goal', 'income_source', 'client', 'deal', 'service', 'note');
+create type public.entity_type as enum ('course', 'project', 'goal', 'income_source', 'client', 'deal', 'service', 'note', 'asset');
 
 create table public.obsidian_notes (
   id uuid primary key default gen_random_uuid(),
@@ -1175,6 +1933,8 @@ create trigger services_links_cleanup after delete on public.services
   for each row execute function private.entity_links_cleanup('service');
 create trigger obsidian_notes_links_cleanup after delete on public.obsidian_notes
   for each row execute function private.entity_links_cleanup('note');
+create trigger investment_assets_links_cleanup after delete on public.investment_assets
+  for each row execute function private.entity_links_cleanup('asset');
 
 create or replace function private.courses_register_note()
 returns trigger
@@ -1210,7 +1970,9 @@ select 'deal', id, user_id, title, 'freelance', stage::text from public.deals
 union all
 select 'service', id, user_id, name, context::text, last_state::text from public.services
 union all
-select 'note', id, user_id, title, null, null from public.obsidian_notes;
+select 'note', id, user_id, title, null, null from public.obsidian_notes
+union all
+select 'asset', id, user_id, ticker_or_name, context::text, asset_class::text from public.investment_assets where archived_at is null;
 
 create view public.v_graph_edges with (security_invoker = true) as
 select user_id, source_type, source_id, target_type, target_id, label, 'manual' as origin, id as link_id
@@ -1229,7 +1991,11 @@ where deal_id is not null
 union all
 select i.user_id, 'income_source', i.source_id, 'deal', d.id, 'receita', 'derived', null
 from public.deals d
-join public.incomes i on i.id = d.income_id;
+join public.incomes i on i.id = d.income_id
+union all
+select user_id, 'asset', id, 'goal', linked_goal_id, 'financia', 'derived', null
+from public.investment_assets
+where linked_goal_id is not null and archived_at is null;
 
 create or replace function public.graph_snapshot(p_context text default 'all')
 returns jsonb
@@ -1434,7 +2200,7 @@ export function GraphCanvas({
   - conexão duplicada é rejeitada;
   - excluir um curso remove suas conexões;
   - usuário B não vê nós nem arestas de A.
-- Arestas derivadas aparecem sem ação manual (curso com nota, deal com cliente, projeto com deal, ganho com deal).
+- Arestas derivadas aparecem sem ação manual (curso com nota, deal com cliente, projeto com deal, ganho com deal, ativo com objetivo).
 - 500 nós e 1.500 arestas: layout estabiliza em menos de 3 s; interação a pelo menos 50 fps no desktop e 30 fps num Android intermediário.
 - Arrastar nó, zoom (roda e pinça), pan e hover destacando a vizinhança funcionam com mouse e toque.
 - Clique abre o painel; em nó de nota, “Abrir no Obsidian” dispara o `obsidian://` correto.
@@ -1444,15 +2210,15 @@ export function GraphCanvas({
 - A biblioteca do grafo não aparece no bundle de outras rotas (verificado no relatório de build).
 
 ### Dependências
-F2, F3, F5, F6, F7 (entidades) e F8 (Visão Geral, onde entra um mini-grafo dos nós mais conectados).
+F2, F3, F5, F6, F7, F8 (entidades) e F9 (Visão Geral, onde entra um mini-grafo dos nós mais conectados).
 
 ---
 
-## F10 · Servidor MCP (Claude conectado ao Meridian)
+## F11 · Servidor MCP (Claude conectado ao Meridian)
 
 **Objetivo:** expor o Meridian como servidor MCP remoto, para que o Claude (Claude Code, Claude Desktop e, numa segunda etapa, Claude na Web) consulte e atualize os dados por linguagem natural durante a conversa, com cada escrita auditada e reversível.
 
-**Por que aqui:** o servidor é uma segunda porta de entrada para os mesmos módulos, então só faz sentido quando eles existem. `get_dashboard_summary` reaproveita as consultas da Visão Geral (F8) e `link_graph_entities` grava em `entity_links` (F9). Fica antes da F12 para que o hardening, o rate limit e a CSP do release já cubram `/api/mcp`. Depois da F8, as tools sem relação com o grafo podem ser antecipadas, deixando só `link_graph_entities` para depois da F9.
+**Por que aqui:** o servidor é uma segunda porta de entrada para os mesmos módulos, então só faz sentido quando eles existem. `get_dashboard_summary` reaproveita as consultas da Visão Geral (F9) e `link_graph_entities` grava em `entity_links` (F10). Fica antes da F13 para que o hardening, o rate limit e a CSP do release já cubram `/api/mcp`. Depois da F9, as tools sem relação com o grafo podem ser antecipadas, deixando só `link_graph_entities` para depois da F10.
 
 ### Decisões e ajustes à especificação
 
@@ -1464,7 +2230,7 @@ F2, F3, F5, F6, F7 (entidades) e F8 (Visão Geral, onde entra um mini-grafo dos 
 | Chave do Supabase | O projeto já usa `SUPABASE_SECRET_KEY`, que substitui a antiga `SUPABASE_SERVICE_ROLE_KEY`. Ela fica só no servidor e é usada para dois fins: gravar em `agent_logs` e abrir uma sessão do dono. **Os dados não são lidos nem escritos com a chave secreta**, porque ela ignora a RLS, e as funções `security invoker` (`safe_monthly_base`, `expense_series`, `goal_progress`, `move_task`, `win_deal`) e os `default auth.uid()` dependem do usuário autenticado. |
 | Sessão do dono | `auth.admin.generateLink` + `verifyOtp` geram uma sessão real do usuário `MERIDIAN_OWNER_ID`, sem enviar e-mail. A sessão fica em cache na instância até expirar. Com isso, toda tool roda com RLS, gatilhos e RPCs iguais aos da interface. |
 | Autenticação | `Authorization: Bearer <MERIDIAN_MCP_SECRET>`, segredo de 32+ bytes, comparação em tempo constante. Funciona no Claude Code (header nativo) e no Claude Desktop (ponte `mcp-remote`). |
-| Claude na Web | O conector personalizado do claude.ai não aceita header fixo, só OAuth 2.1. Fica como etapa F10.b: OAuth Server do Supabase Auth (Dynamic Client Registration + `/.well-known/oauth-protected-resource`). O token emitido já é um JWT do usuário, e a mesma `verifyToken` passa a aceitá-lo. Viabilidade conferida no início da fase. |
+| Claude na Web | O conector personalizado do claude.ai não aceita header fixo, só OAuth 2.1. Fica como etapa F11.b: OAuth Server do Supabase Auth (Dynamic Client Registration + `/.well-known/oauth-protected-resource`). O token emitido já é um JWT do usuário, e a mesma `verifyToken` passa a aceitá-lo. Viabilidade conferida no início da fase. |
 | Regras de negócio | Nenhuma regra é duplicada. As mutations hoje dentro das Server Actions migram para `features/*/core.ts`, como funções puras `(db, input) => resultado`, chamadas tanto pela Server Action quanto pela tool. |
 | Escopo de escrita | Só criação e atualização. Nenhuma tool exclui dados. Desfazer acontece pela interface, a partir do log. |
 | Idempotência | Toda tool de escrita aceita `idempotency_key`. Uma repetição com a mesma chave devolve o resultado gravado no log, sem gravar de novo. |
@@ -1482,7 +2248,7 @@ create table public.agent_logs (
   status public.agent_log_status not null,
   result_json jsonb,
   error_message text check (error_message is null or length(error_message) <= 500),
-  target_table text check (target_table is null or target_table in ('expenses', 'incomes', 'goal_contributions', 'tasks', 'courses', 'entity_links')),
+  target_table text check (target_table is null or target_table in ('expenses', 'incomes', 'goal_contributions', 'tasks', 'courses', 'entity_links', 'investment_transactions', 'investment_assets')),
   target_id uuid,
   before_json jsonb,
   after_json jsonb,
@@ -1632,7 +2398,15 @@ import type { Json } from "@/lib/supabase/database.types";
 import { getOwnerDb, type OwnerDb } from "./owner";
 
 export type Mutation = {
-  table: "expenses" | "incomes" | "goal_contributions" | "tasks" | "courses" | "entity_links";
+  table:
+    | "expenses"
+    | "incomes"
+    | "goal_contributions"
+    | "tasks"
+    | "courses"
+    | "entity_links"
+    | "investment_transactions"
+    | "investment_assets";
   id: string;
   before?: Json;
   after: Json;
@@ -1974,19 +2748,20 @@ export async function addTransaction(raw: unknown) {
 
 | Tool | Leitura/escrita | Regra |
 |---|---|---|
-| `get_dashboard_summary` | leitura | Base segura (`safe_monthly_base`), ganhos do mês por `income_kind` (CLT = garantido, PJ/freela = variável), despesas do mês e orçamento por categoria, objetivos ativos com `goal_progress`, tarefas `todo`/`doing` com prazo, pipeline aberto. Reusa as consultas da F8, que passam a receber o client por parâmetro. |
+| `get_dashboard_summary` | leitura | Base segura (`safe_monthly_base`), ganhos do mês por `income_kind` (CLT = garantido, PJ/freela = variável), despesas do mês e orçamento por categoria, objetivos ativos com `goal_progress`, tarefas `todo`/`doing` com prazo, pipeline aberto. Reusa as consultas da F9, que passam a receber o client por parâmetro. |
 | `search_entities` | leitura | Busca por nome em todos os tipos de `entity_type`, sem acento, até 20 resultados com `id`, `type`, `label` e contexto. |
 | `add_financial_transaction` | escrita | Despesa com `source = 'capture'`; o contexto vem do projeto quando informado. Ganho exige fonte existente: o MCP não cria fontes. |
 | `update_goal_progress` | escrita | `add` insere `goal_contributions` com o valor; `set` insere a diferença entre o alvo informado e o total atual, preservando o histórico. Devolve total, percentual e marco atingido. Objetivo `achieved` ou `archived` é rejeitado. |
 | `manage_kanban_task` | escrita | `create` entra no fim da coluna (`max(position) + 1024`). `move` e `complete` usam o RPC `move_task`, colocando a tarefa no fim da coluna de destino. Os gatilhos da F6 preenchem `completed_at` e herdam o contexto do projeto. Título ambíguo é rejeitado com a lista de candidatas. |
 | `add_course_to_backlog` | escrita | `obsidian` aceita caminho da nota ou link `obsidian://open?vault=...&file=...` e grava só o caminho em `obsidian_note`, como na F2. URL já cadastrada é rejeitada com o curso existente. |
-| `link_graph_entities` | escrita | Insere em `entity_links`. O gatilho da F9 valida a posse das duas pontas; `23503` e `23505` viram `ToolRejection` com mensagem clara. |
+| `get_portfolio_summary`, `add_investment_transaction`, `update_asset_balance` | leitura / escrita / escrita | Contrato e regras na F8 (seção “Expansão do Servidor MCP”). |
+| `link_graph_entities` | escrita | Insere em `entity_links`. O gatilho da F10 valida a posse das duas pontas; `23503` e `23505` viram `ToolRejection` com mensagem clara. |
 
 **Desfazer (`/ajustes/agente`)**
 - Lista de `agent_logs` com filtro por tool e status, payload e resultado expansíveis.
 - Botão “Desfazer” em escritas com `status = 'success'`:
   - em inserção, exclui `target_id`;
-  - em atualização de tarefa, restaura `before_json`.
+  - em atualização (tarefa, saldo ou cotação de ativo), restaura `before_json`.
 
   Ambos rodam numa Server Action com a sessão do usuário (RLS) e marcam `reverted_at`.
 - Botão “Gerar novo segredo” só mostra as instruções de rotação: o valor vive na Vercel e o app não grava nem exibe o segredo.
@@ -2021,18 +2796,20 @@ claude mcp add --transport http --scope user meridian https://<seu-app>.vercel.a
 }
 ```
 
-**Claude na Web e no Desktop via conector (F10.b)**: em Configurações → Conectores → Adicionar conector personalizado, informar `https://<seu-app>.vercel.app/api/mcp`; o login acontece pelo fluxo OAuth do Supabase com o mesmo e-mail permitido.
+**Claude na Web e no Desktop via conector (F11.b)**: em Configurações → Conectores → Adicionar conector personalizado, informar `https://<seu-app>.vercel.app/api/mcp`; o login acontece pelo fluxo OAuth do Supabase com o mesmo e-mail permitido.
 
 ### Critérios de aceite
 - Sem `Authorization`, com token errado ou com segredo de menos de 32 caracteres configurado: `401` com `WWW-Authenticate`, sem tocar o banco; tempo de resposta igual para token certo e errado no mesmo tamanho.
-- `MCP Inspector` (`npx @modelcontextprotocol/inspector`) lista as 7 tools com títulos, descrições, schemas e anotações `readOnlyHint`/`destructiveHint` corretas.
+- `MCP Inspector` (`npx @modelcontextprotocol/inspector`) lista as 10 tools com títulos, descrições, schemas e anotações `readOnlyHint`/`destructiveHint` corretas.
 - Pelo Claude Code e pelo Claude Desktop, frases como estas executam a tool certa e o item aparece na interface após recarregar:
   - “gastei 35,90 no almoço”;
   - “recebi 1.800 do freela da landing page”;
   - “guarda 100 no Óculos Novo”;
   - “move Wireframe para entregue”;
   - “adiciona este curso: <url>”;
-  - “liga o curso X ao projeto Y”.
+  - “liga o curso X ao projeto Y”;
+  - “aportei 500 na caixinha viagem”;
+  - “quanto tenho investido e onde coloco os próximos 1.000?”.
 - Toda chamada de escrita, inclusive rejeitada ou com erro, gera exatamente uma linha em `agent_logs` com payload, status e duração. Chamadas de leitura não geram log.
 - Mesma `idempotency_key` enviada duas vezes grava um único item e devolve o mesmo resultado.
 - Nome ambíguo (dois objetivos com “Óculos”) ou inexistente devolve `isError` com as opções, sem gravar.
@@ -2047,15 +2824,15 @@ claude mcp add --transport http --scope user meridian https://<seu-app>.vercel.a
 - Cold start + chamada de escrita abaixo de 3 s; chamada quente abaixo de 800 ms.
 
 ### Dependências
-F2, F3, F4, F5, F6 (tabelas e regras escritas pelas tools), F8 (consultas do resumo) e F9 (`entity_links`). F10.b depende de o OAuth Server do Supabase Auth estar disponível no plano gratuito.
+F2, F3, F4, F5, F6, F8 (tabelas e regras escritas pelas tools), F9 (consultas do resumo) e F10 (`entity_links`). F11.b depende de o OAuth Server do Supabase Auth estar disponível no plano gratuito.
 
 ---
 
-## F11 · Ambient Player (Spotify em tempo real)
+## F12 · Ambient Player (Spotify em tempo real)
 
 **Objetivo:** detectar o que sua conta do Spotify está tocando em qualquer dispositivo e mostrar um mini-player discreto no Meridian (desktop e PWA), com trilha de progresso fluida e controles rápidos.
 
-**Por que aqui:** é independente dos módulos de dados e depende só do shell (F1). Fica depois do núcleo para não atrasar finanças e projetos, e antes da F12 para que o comportamento no PWA instalado (barra fixa, área segura, retomada ao voltar do segundo plano) seja validado junto com o release. Se quiser antecipar, pode correr em paralelo a partir da F1.
+**Por que aqui:** é independente dos módulos de dados e depende só do shell (F1). Fica depois do núcleo para não atrasar finanças e projetos, e antes da F13 para que o comportamento no PWA instalado (barra fixa, área segura, retomada ao voltar do segundo plano) seja validado junto com o release. Se quiser antecipar, pode correr em paralelo a partir da F1.
 
 ### Pré-requisitos e limites da Spotify (verificados em 2026)
 - Desde fevereiro de 2026, o **modo desenvolvimento exige Spotify Premium do dono do app** e aceita no máximo **5 usuários autorizados**. Para uso pessoal isso basta.
@@ -2313,7 +3090,7 @@ F1 (shell, Ajustes, Dialog). Pode correr em paralelo a qualquer fase depois da F
 
 ---
 
-## F12 · PWA, Offline, APK & Release 1.0
+## F13 · PWA, Offline, APK & Release 1.0
 
 **Objetivo:** app instalável sem barra de navegação, utilizável com rede instável, empacotável como APK e endurecido para uso diário.
 
@@ -2353,11 +3130,11 @@ share_target: {
 - APK assinado instalado sem barra de URL (Digital Asset Links verificado).
 - Suíte E2E completa verde em Chromium e WebKit mobile.
 - Restauração completa a partir do backup semanal testada.
-- Grafo (F9) e player (F11) validados no app instalado: gestos de pinça e arrasto no grafo, barra do player acima da navegação inferior e retomada do polling ao voltar do segundo plano.
+- Grafo (F10) e player (F12) validados no app instalado: gestos de pinça e arrasto no grafo, barra do player acima da navegação inferior e retomada do polling ao voltar do segundo plano.
 - CSP libera `i.scdn.co` em `img-src` para as capas do Spotify e mantém as chamadas à Spotify só no servidor.
 
 ### Dependências
-F8, F9, F10, F11.
+F9, F10, F11, F12.
 
 ---
 
@@ -2385,13 +3162,15 @@ F8, F9, F10, F11.
 | VPS compartilhada com projeto de cliente | Meridian não hospeda nada nela; só monitora e usa o n8n como canal de alerta. Dados do servidor (IP, hostname) ficam no banco, nunca no repositório |
 | Acesso SSH por senha como root na VPS | Endurecimento descrito em `docs/VPS.md` antes da F7 |
 | Meridian fora do ar sem ninguém perceber | Watchdog externo no n8n chamando `/api/health` |
-| Spotify muda regras do modo desenvolvimento (Premium do dono, 5 usuários, endpoints removidos) | Teste rápido dos endpoints do player no início da F11; widget degrada para modo leitura ou some sem quebrar o app |
+| Spotify muda regras do modo desenvolvimento (Premium do dono, 5 usuários, endpoints removidos) | Teste rápido dos endpoints do player no início da F12; widget degrada para modo leitura ou some sem quebrar o app |
 | Conta Spotify Free | Controles escondidos em `403 PREMIUM_REQUIRED`; só leitura do que está tocando |
 | Vazamento do refresh token do Spotify | Tabela sem acesso pelo cliente, criptografia AES-256-GCM, chave só na Vercel, rotação gravada a cada renovação |
 | Polling consumindo a franquia da Vercel | Polling adaptativo, pausa com a aba oculta, respeito ao `Retry-After`; acompanhamento no painel de Usage |
 | Grafo lento em celular | Limite de nós por filtro de contexto/tipo, `cooldownTicks`, rótulos só a partir de zoom 1,5× e visão Lista como alternativa |
 | Vazamento do `MERIDIAN_MCP_SECRET` | Segredo só na Vercel e na configuração local do cliente, nunca em `.mcp.json` versionado; rotação trocando a variável; nenhuma tool exclui dados e toda escrita fica no log com “Desfazer” |
 | Claude grava algo errado por interpretar mal a frase ou por instruções embutidas em conteúdo lido (página de curso, descrição) | Tools só criam e atualizam, nomes ambíguos são rejeitados com opções, respostas devolvem o que foi gravado e `/ajustes/agente` permite desfazer |
-| Incompatibilidade entre `@modelcontextprotocol/sdk`, `mcp-handler` e Zod 4 | Versões fixadas e teste com o MCP Inspector no início da F10; se preciso, schemas MCP montados com `zod/v4` ou JSON Schema gerado por `z.toJSONSchema` |
-| Conector do claude.ai exige OAuth | Bearer cobre Claude Code e Desktop desde o primeiro deploy; OAuth do Supabase Auth na F10.b, só se disponível no Free Tier |
+| Incompatibilidade entre `@modelcontextprotocol/sdk`, `mcp-handler` e Zod 4 | Versões fixadas e teste com o MCP Inspector no início da F11; se preciso, schemas MCP montados com `zod/v4` ou JSON Schema gerado por `z.toJSONSchema` |
+| Conector do claude.ai exige OAuth | Bearer cobre Claude Code e Desktop desde o primeiro deploy; OAuth do Supabase Auth na F11.b, só se disponível no Free Tier |
 | Sessões do dono acumulando em `auth.sessions` | Sessão reaproveitada por instância até expirar; limpeza semanal de sessões expiradas pelo `pg_cron` |
+| brapi.dev ou CoinGecko mudam limites do plano gratuito ou exigem outro formato | Respostas validadas por Zod, falha por símbolo sem derrubar o lote, cotação antiga mantida com data visível e fallback para cotação manual |
+| Preço médio divergente da corretora (taxas, desdobramentos, bonificações) | Total editável no aporte para incluir taxas; desdobramento lançado como ajuste de quantidade com preço proporcional; preço médio sempre recalculado a partir do histórico |
