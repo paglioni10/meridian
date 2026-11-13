@@ -821,7 +821,7 @@ O Meridian **não** é hospedado na VPS: ela atende um projeto freelance, roda c
 | Papel | Como |
 |---|---|
 | Primeiro inventário monitorado | VPS, n8n, sites estáticos e redirecionamentos servidos pelo Caddy viram `services`; domínio no Registro.br e crédito pré-pago da Hetzner viram `renewals`. Tudo cadastrado pela UI, nunca versionado (repositório público). |
-| Canal de alertas | Mudança de estado de serviço e vencimentos disparam `POST` assinado para um webhook do n8n, que entrega por Telegram ou e-mail (Resend). O Meridian continua sem dependência dura: se o webhook falhar, o alerta segue visível no painel. |
+| Canal de alertas | Mudança de estado de serviço e vencimentos disparam `POST` assinado para um webhook do n8n, que entrega por e-mail (SMTP). O Meridian continua sem dependência dura: se o webhook falhar, o alerta segue visível no painel. |
 | Watchdog externo | Um fluxo do n8n chama `GET /api/health` do Meridian a cada 10 min e alerta se falhar. Cobre o ponto cego de o próprio Meridian (Vercel ou Supabase) estar fora e não conseguir se autodiagnosticar. |
 
 Inventário inicial previsto:
@@ -979,7 +979,7 @@ select cron.schedule(
 - `GET /api/health` público e sem dados: responde `{ ok, db }` após um `select 1` via Supabase. Alvo do watchdog no n8n. Fora do matcher do `proxy.ts`.
 - `GET /api/cron/daily` (pg_cron 1×/dia): validade de certificados TLS via `node:tls`, `expires_on` de domínios via RDAP (`rdap.registro.br` para `.br`, `rdap.org` para o resto), projeção de crédito pré-pago (`balance_updated_on + balance ÷ monthly_burn`) e geração dos alertas de vencimento.
 - `lib/alerts.ts`: grava `alert_events` com `dedupe_key` (ex.: `renewal:<id>:7d`, `service:<id>:down:<last_change_at>`) e envia `POST` para `ALERT_WEBHOOK_URL` com header `X-Meridian-Signature` (HMAC-SHA256 do corpo com `ALERT_WEBHOOK_SECRET`). Falha de entrega fica em `delivery_error` e é reenviada na próxima rodada.
-- Fluxo n8n versionado em `docs/n8n/meridian-alerts.json` (webhook → valida HMAC → Telegram/Resend) e `docs/n8n/meridian-watchdog.json` (cron 10 min → `GET /api/health` → alerta), sem credenciais.
+- Fluxo n8n versionado em `docs/n8n/meridian-alerts.json` (webhook → valida HMAC → e-mail) e `docs/n8n/meridian-watchdog.json` (cron 10 min → `GET /api/health` → alerta), sem credenciais.
 - Server Actions: `createService`, `updateService`, `checkNow(id)`, `createRenewal`, `renewNow(id)` (avança `expires_on` pelo ciclo), `topUpCredit(id, amount)` (atualiza saldo e reprojeta `expires_on`).
 
 **Componentes**
@@ -992,7 +992,7 @@ select cron.schedule(
 - Vencimentos com 30/7/1 dias aparecem destacados; vencido aparece em `--red` com texto.
 - Retenção mantém `service_checks` abaixo de 30 dias; tamanho do banco monitorado (< 100 MB).
 - `SUPABASE_SECRET_KEY` ausente do bundle do cliente (verificado com busca no `.next/static`).
-- Inventário da VPS cadastrado e com estado real; parar o container do n8n gera `OFFLINE` e alerta no Telegram/e-mail uma única vez, e a volta gera um único alerta `ONLINE`.
+- Inventário da VPS cadastrado e com estado real; parar o container do n8n gera `OFFLINE` e alerta por e-mail uma única vez, e a volta gera um único alerta `ONLINE`.
 - Crédito Hetzner exibe data projetada de esgotamento e alerta 30/7/1 dias antes.
 - Webhook com assinatura inválida é rejeitado pelo fluxo do n8n.
 - Watchdog do n8n alerta quando `/api/health` falha (testado apontando para uma URL inexistente).

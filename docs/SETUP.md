@@ -105,7 +105,10 @@ select vault.create_secret('https://<seu-app>.vercel.app', 'app_url');
 | `ALERT_WEBHOOK_URL` | URL de produção do webhook do fluxo `meridian-alerts` no n8n |
 | `ALERT_WEBHOOK_SECRET` | `openssl rand -hex 32` (Sensitive), o mesmo valor colado no nó **Calcular HMAC** |
 
-3. **n8n**: importar `docs/n8n/meridian-alerts.json` e `docs/n8n/meridian-watchdog.json`, trocar `<ALERT_WEBHOOK_SECRET>`, `<TELEGRAM_CHAT_ID>` e `<MERIDIAN_URL>`, escolher a credencial do Telegram e ativar os dois fluxos.
+3. **n8n**: importar `docs/n8n/meridian-alerts.json` e `docs/n8n/meridian-watchdog.json` e, nos dois fluxos:
+   - trocar `<ALERT_WEBHOOK_SECRET>`, `<REMETENTE>`, `<SEU_EMAIL>` e `<MERIDIAN_URL>`;
+   - no nó **Enviar e-mail**, criar a credencial SMTP. Com Gmail: servidor `smtp.gmail.com`, porta `465`, SSL ligado, usuário = seu Gmail e senha = uma *senha de app* (Conta Google → Segurança → Verificação em duas etapas → Senhas de app), nunca a senha normal;
+   - ativar os fluxos e testar com **Execute workflow**.
 4. **Automações com heartbeat**: no Meridian, cadastrar o serviço com verificação *Heartbeat*, abrir o serviço e copiar o comando `curl`. No n8n, o último nó do fluxo é um *HTTP Request* `POST` nessa URL.
 
 | Agendamento | Quando | O que faz |

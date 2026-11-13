@@ -151,7 +151,7 @@ docker run --rm -v n8n_data:/data -v "$HOME":/backup alpine tar czf /backup/n8n_
 
 | Item | Onde |
 |---|---|
-| Webhook de alertas | Fluxo n8n `docs/n8n/meridian-alerts.json`: Webhook → valida `X-Meridian-Signature` (HMAC-SHA256 com `ALERT_WEBHOOK_SECRET`) → Telegram ou Resend |
+| Webhook de alertas | Fluxo n8n `docs/n8n/meridian-alerts.json`: Webhook → valida `X-Meridian-Signature` (HMAC-SHA256 com `ALERT_WEBHOOK_SECRET`) → e-mail (SMTP) |
 | Watchdog | Fluxo n8n `docs/n8n/meridian-watchdog.json`: Schedule 10 min → `GET https://<meridian>/api/health` → alerta se status ≠ 200 |
 | Heartbeat | Último nó de cada fluxo crítico: HTTP Request `POST https://<meridian>/api/heartbeat/<token>` |
 | Variáveis na Vercel | `ALERT_WEBHOOK_URL` (URL de produção do webhook n8n) e `ALERT_WEBHOOK_SECRET` (`openssl rand -hex 32`), ambas Secret |
