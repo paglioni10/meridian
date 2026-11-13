@@ -79,3 +79,8 @@ export function formatMonthLong(monthISO: string): string {
   const name = MONTHS_LONG[month - 1];
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year}`;
 }
+
+export function formatDateFull(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+}

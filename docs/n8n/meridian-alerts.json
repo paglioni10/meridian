@@ -1,0 +1,116 @@
+{
+  "name": "Meridian · Alertas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meridian-alerts",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "meridian-alerts"
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "value": "={{ JSON.stringify($json.body) }}",
+        "dataPropertyName": "signature",
+        "secret": "<ALERT_WEBHOOK_SECRET>",
+        "encoding": "hex"
+      },
+      "name": "Calcular HMAC",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ 'sha256=' + $json.signature }}",
+              "rightValue": "={{ $('Webhook').item.json.headers['x-meridian-signature'] }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Assinatura válida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "text",
+              "type": "string",
+              "value": "={{ ({ service_down: '🔴 OFFLINE', service_up: '🟢 VOLTOU', renewal_due: '⏳ A VENCER', renewal_expired: '⛔ VENCIDO', credit_low: '💳 CRÉDITO ACABANDO', tls_due: '🔒 CERTIFICADO' })[$('Webhook').item.json.body.kind] + ' · ' + ($('Webhook').item.json.body.service || $('Webhook').item.json.body.renewal) + ($('Webhook').item.json.body.days_left !== undefined ? ' · ' + $('Webhook').item.json.body.days_left + ' dias' : '') + ($('Webhook').item.json.body.expires_on ? ' · ' + $('Webhook').item.json.body.expires_on : '') + ($('Webhook').item.json.body.error ? '\\n' + $('Webhook').item.json.body.error : '') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Montar mensagem",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [660, -100]
+    },
+    {
+      "parameters": {
+        "chatId": "<TELEGRAM_CHAT_ID>",
+        "text": "={{ $json.text }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [880, -100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": { "responseCode": 200 }
+      },
+      "name": "Responder 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, -100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": false }",
+        "options": { "responseCode": 401 }
+      },
+      "name": "Responder 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [660, 120]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Calcular HMAC", "type": "main", "index": 0 }]] },
+    "Calcular HMAC": { "main": [[{ "node": "Assinatura válida?", "type": "main", "index": 0 }]] },
+    "Assinatura válida?": {
+      "main": [
+        [{ "node": "Montar mensagem", "type": "main", "index": 0 }],
+        [{ "node": "Responder 401", "type": "main", "index": 0 }]
+      ]
+    },
+    "Montar mensagem": { "main": [[{ "node": "Telegram", "type": "main", "index": 0 }]] },
+    "Telegram": { "main": [[{ "node": "Responder 200", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

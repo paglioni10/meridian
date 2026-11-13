@@ -88,3 +88,30 @@ psql "<db-url-destino>" -f restore/roles.sql -f restore/schema.sql -f restore/da
 - [ ] `npm run db:reset` local recria o banco sem erro e `npm run db:test` passa.
 - [ ] CI verde.
 - [ ] Backup executado manualmente e restaurado num banco local.
+
+## 4. Servidores (F7)
+
+1. **Vault do Supabase** (SQL Editor do projeto de produção, uma vez). Os agendamentos do `pg_cron` só chamam a Vercel depois disto:
+
+```sql
+select vault.create_secret('<CRON_SECRET>', 'cron_secret');
+select vault.create_secret('https://<seu-app>.vercel.app', 'app_url');
+```
+
+2. **Vercel → Environment Variables** (Production), depois redeploy:
+
+| Variável | Valor |
+|---|---|
+| `ALERT_WEBHOOK_URL` | URL de produção do webhook do fluxo `meridian-alerts` no n8n |
+| `ALERT_WEBHOOK_SECRET` | `openssl rand -hex 32` (Sensitive), o mesmo valor colado no nó **Calcular HMAC** |
+
+3. **n8n**: importar `docs/n8n/meridian-alerts.json` e `docs/n8n/meridian-watchdog.json`, trocar `<ALERT_WEBHOOK_SECRET>`, `<TELEGRAM_CHAT_ID>` e `<MERIDIAN_URL>`, escolher a credencial do Telegram e ativar os dois fluxos.
+4. **Automações com heartbeat**: no Meridian, cadastrar o serviço com verificação *Heartbeat*, abrir o serviço e copiar o comando `curl`. No n8n, o último nó do fluxo é um *HTTP Request* `POST` nessa URL.
+
+| Agendamento | Quando | O que faz |
+|---|---|---|
+| `meridian-health` | a cada 5 min | `POST /api/cron/health`: verifica serviços HTTP vencidos pelo intervalo e heartbeats silenciosos |
+| `meridian-daily` | 09:00 (Brasília) | `POST /api/cron/daily`: certificados TLS, vencimento de domínios via RDAP, alertas de vencimento |
+| `meridian-checks-retention` | 00:15 (Brasília) | apaga verificações com mais de 30 dias e alertas com mais de 90 |
+
+Conferir no SQL Editor: `select jobname, schedule, active from cron.job;` e as últimas execuções em `select * from cron.job_run_details order by start_time desc limit 10;`.

@@ -23,6 +23,71 @@ export type Database = {
   };
   public: {
     Tables: {
+      alert_events: {
+        Row: {
+          attempts: number;
+          created_at: string;
+          dedupe_key: string;
+          delivered_at: string | null;
+          delivery_error: string | null;
+          id: number;
+          kind: Database["public"]["Enums"]["alert_kind"];
+          payload: NonNullable<Json>;
+          renewal_id: string | null;
+          service_id: string | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          attempts?: number;
+          created_at?: string;
+          dedupe_key: string;
+          delivered_at?: string | null;
+          delivery_error?: string | null;
+          id?: never;
+          kind: Database["public"]["Enums"]["alert_kind"];
+          payload?: NonNullable<Json>;
+          renewal_id?: string | null;
+          service_id?: string | null;
+          user_id: string;
+        };
+        Update: {
+          attempts?: number;
+          created_at?: string;
+          dedupe_key?: string;
+          delivered_at?: string | null;
+          delivery_error?: string | null;
+          id?: never;
+          kind?: Database["public"]["Enums"]["alert_kind"];
+          payload?: NonNullable<Json>;
+          renewal_id?: string | null;
+          service_id?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "alert_events_renewal_id_user_id_fkey";
+            columns: ["renewal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "renewals";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "alert_events_renewal_id_user_id_fkey";
+            columns: ["renewal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "v_renewals_due";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "alert_events_service_id_user_id_fkey";
+            columns: ["service_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       category_rules: {
         Row: {
           category_id: string;
@@ -761,6 +826,208 @@ export type Database = {
           },
         ];
       };
+      renewals: {
+        Row: {
+          alert_days: number[];
+          auto_renew: boolean;
+          balance_cents: number | null;
+          balance_updated_on: string | null;
+          billing_cycle: string;
+          context: Database["public"]["Enums"]["context_kind"];
+          cost_cents: number | null;
+          created_at: string;
+          currency: string;
+          expires_on: string;
+          id: string;
+          kind: Database["public"]["Enums"]["renewal_kind"];
+          monthly_burn_cents: number | null;
+          name: string;
+          notes: string | null;
+          owner_is_client: boolean;
+          provider: string | null;
+          service_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          alert_days?: number[];
+          auto_renew?: boolean;
+          balance_cents?: number | null;
+          balance_updated_on?: string | null;
+          billing_cycle?: string;
+          context?: Database["public"]["Enums"]["context_kind"];
+          cost_cents?: number | null;
+          created_at?: string;
+          currency?: string;
+          expires_on: string;
+          id?: string;
+          kind: Database["public"]["Enums"]["renewal_kind"];
+          monthly_burn_cents?: number | null;
+          name: string;
+          notes?: string | null;
+          owner_is_client?: boolean;
+          provider?: string | null;
+          service_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          alert_days?: number[];
+          auto_renew?: boolean;
+          balance_cents?: number | null;
+          balance_updated_on?: string | null;
+          billing_cycle?: string;
+          context?: Database["public"]["Enums"]["context_kind"];
+          cost_cents?: number | null;
+          created_at?: string;
+          currency?: string;
+          expires_on?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["renewal_kind"];
+          monthly_burn_cents?: number | null;
+          name?: string;
+          notes?: string | null;
+          owner_is_client?: boolean;
+          provider?: string | null;
+          service_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "renewals_service_id_user_id_fkey";
+            columns: ["service_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      service_checks: {
+        Row: {
+          checked_at: string;
+          error: string | null;
+          id: number;
+          latency_ms: number | null;
+          service_id: string;
+          state: Database["public"]["Enums"]["service_state"];
+          status_code: number | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          checked_at?: string;
+          error?: string | null;
+          id?: never;
+          latency_ms?: number | null;
+          service_id: string;
+          state: Database["public"]["Enums"]["service_state"];
+          status_code?: number | null;
+          user_id: string;
+        };
+        Update: {
+          checked_at?: string;
+          error?: string | null;
+          id?: never;
+          latency_ms?: number | null;
+          service_id?: string;
+          state?: Database["public"]["Enums"]["service_state"];
+          status_code?: number | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_checks_service_id_user_id_fkey";
+            columns: ["service_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      services: {
+        Row: {
+          active: boolean;
+          check_method: Database["public"]["Enums"]["check_method"];
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          expected_status: number;
+          heartbeat_token: string;
+          id: string;
+          interval_minutes: number;
+          keyword: string | null;
+          kind: Database["public"]["Enums"]["service_kind"];
+          last_change_at: string | null;
+          last_checked_at: string | null;
+          last_error: string | null;
+          last_latency_ms: number | null;
+          last_state: Database["public"]["Enums"]["service_state"];
+          last_status_code: number | null;
+          latency_warn_ms: number;
+          name: string;
+          notes: string | null;
+          provider: string | null;
+          tls_expires_on: string | null;
+          updated_at: string;
+          url: string | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          check_method?: Database["public"]["Enums"]["check_method"];
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          expected_status?: number;
+          heartbeat_token?: string;
+          id?: string;
+          interval_minutes?: number;
+          keyword?: string | null;
+          kind: Database["public"]["Enums"]["service_kind"];
+          last_change_at?: string | null;
+          last_checked_at?: string | null;
+          last_error?: string | null;
+          last_latency_ms?: number | null;
+          last_state?: Database["public"]["Enums"]["service_state"];
+          last_status_code?: number | null;
+          latency_warn_ms?: number;
+          name: string;
+          notes?: string | null;
+          provider?: string | null;
+          tls_expires_on?: string | null;
+          updated_at?: string;
+          url?: string | null;
+          user_id?: string;
+        };
+        Update: {
+          active?: boolean;
+          check_method?: Database["public"]["Enums"]["check_method"];
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          expected_status?: number;
+          heartbeat_token?: string;
+          id?: string;
+          interval_minutes?: number;
+          keyword?: string | null;
+          kind?: Database["public"]["Enums"]["service_kind"];
+          last_change_at?: string | null;
+          last_checked_at?: string | null;
+          last_error?: string | null;
+          last_latency_ms?: number | null;
+          last_state?: Database["public"]["Enums"]["service_state"];
+          last_status_code?: number | null;
+          latency_warn_ms?: number;
+          name?: string;
+          notes?: string | null;
+          provider?: string | null;
+          tls_expires_on?: string | null;
+          updated_at?: string;
+          url?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       tasks: {
         Row: {
           archived_at: string | null;
@@ -854,7 +1121,109 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      v_renewals_due: {
+        Row: {
+          alert_days: number[];
+          auto_renew: boolean;
+          balance_cents: number | null;
+          balance_updated_on: string | null;
+          billing_cycle: string;
+          context: Database["public"]["Enums"]["context_kind"];
+          cost_cents: number | null;
+          created_at: string;
+          currency: string;
+          days_left: number | null;
+          expires_on: string;
+          id: string;
+          kind: Database["public"]["Enums"]["renewal_kind"];
+          monthly_burn_cents: number | null;
+          name: string;
+          notes: string | null;
+          owner_is_client: boolean;
+          provider: string | null;
+          service_id: string | null;
+          updated_at: string;
+          urgency: string | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          alert_days?: number[] | null;
+          auto_renew?: boolean | null;
+          balance_cents?: number | null;
+          balance_updated_on?: string | null;
+          billing_cycle?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"] | null;
+          cost_cents?: number | null;
+          created_at?: string | null;
+          currency?: string | null;
+          days_left?: never;
+          expires_on?: string | null;
+          id?: string | null;
+          kind?: Database["public"]["Enums"]["renewal_kind"] | null;
+          monthly_burn_cents?: number | null;
+          name?: string | null;
+          notes?: string | null;
+          owner_is_client?: boolean | null;
+          provider?: string | null;
+          service_id?: string | null;
+          updated_at?: string | null;
+          urgency?: never;
+          user_id?: string | null;
+        };
+        Update: {
+          alert_days?: number[] | null;
+          auto_renew?: boolean | null;
+          balance_cents?: number | null;
+          balance_updated_on?: string | null;
+          billing_cycle?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"] | null;
+          cost_cents?: number | null;
+          created_at?: string | null;
+          currency?: string | null;
+          days_left?: never;
+          expires_on?: string | null;
+          id?: string | null;
+          kind?: Database["public"]["Enums"]["renewal_kind"] | null;
+          monthly_burn_cents?: number | null;
+          name?: string | null;
+          notes?: string | null;
+          owner_is_client?: boolean | null;
+          provider?: string | null;
+          service_id?: string | null;
+          updated_at?: string | null;
+          urgency?: never;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "renewals_service_id_user_id_fkey";
+            columns: ["service_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      v_service_uptime: {
+        Row: {
+          avg_latency_7d: number | null;
+          down_checks_7d: number | null;
+          service_id: string;
+          uptime_7d: number | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: "service_checks_service_id_user_id_fkey";
+            columns: ["service_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
     };
     Functions: {
       expense_ranking: {
@@ -929,12 +1298,25 @@ export type Database = {
           variable_floor_cents: number;
         }[];
       };
+      service_timeline: {
+        Args: { p_buckets?: number; p_hours?: number };
+        Returns: {
+          bucket: number;
+          checks: number;
+          degraded: number;
+          down: number;
+          service_id: string;
+        }[];
+      };
       win_deal: {
         Args: { p_create_project?: boolean; p_deal_id: string; p_received_on?: string; p_source_id?: string };
         Returns: Json;
       };
     };
     Enums: {
+      alert_kind:
+        "service_down" | "service_up" | "renewal_due" | "renewal_expired" | "credit_low" | "tls_due";
+      check_method: "http" | "keyword" | "heartbeat" | "manual";
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
       deal_stage: "lead" | "briefing" | "proposal" | "negotiation" | "won" | "lost";
@@ -946,6 +1328,9 @@ export type Database = {
       income_kind: "guaranteed" | "variable";
       priority_level: "low" | "medium" | "high" | "critical";
       project_status: "active" | "on_hold" | "done" | "archived";
+      renewal_kind: "domain" | "hosting" | "license" | "certificate" | "subscription" | "credit";
+      service_kind: "vps" | "automation" | "api" | "website" | "database" | "other";
+      service_state: "up" | "degraded" | "down" | "unknown";
       task_status: "todo" | "doing" | "done";
     };
     CompositeTypes: {
@@ -1060,6 +1445,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      alert_kind: ["service_down", "service_up", "renewal_due", "renewal_expired", "credit_low", "tls_due"],
+      check_method: ["http", "keyword", "heartbeat", "manual"],
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
       deal_stage: ["lead", "briefing", "proposal", "negotiation", "won", "lost"],
@@ -1071,6 +1458,9 @@ export const Constants = {
       income_kind: ["guaranteed", "variable"],
       priority_level: ["low", "medium", "high", "critical"],
       project_status: ["active", "on_hold", "done", "archived"],
+      renewal_kind: ["domain", "hosting", "license", "certificate", "subscription", "credit"],
+      service_kind: ["vps", "automation", "api", "website", "database", "other"],
+      service_state: ["up", "degraded", "down", "unknown"],
       task_status: ["todo", "doing", "done"],
     },
   },

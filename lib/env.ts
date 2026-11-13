@@ -6,10 +6,15 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
 });
 
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((v) => (v === "" ? undefined : v), schema.optional());
+
 const serverSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(20),
   ALLOWED_EMAILS: z.string().min(3),
-  CRON_SECRET: z.string().min(32).optional(),
+  CRON_SECRET: optional(z.string().min(32)),
+  ALERT_WEBHOOK_URL: optional(z.url()),
+  ALERT_WEBHOOK_SECRET: optional(z.string().min(32)),
 });
 
 export const publicEnv = publicSchema.parse({

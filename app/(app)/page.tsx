@@ -7,6 +7,7 @@ import { getGoals } from "@/features/goals/queries";
 import { getExpenses } from "@/features/expenses/queries";
 import { getDeals } from "@/features/freelance/queries";
 import { getSafeBase } from "@/features/income/queries";
+import { getRenewals, getServices } from "@/features/infra/queries";
 import { getBoard } from "@/features/projects/queries";
 import { currentMonthISO, formatDayMonth, formatEditionMeta, formatEditionTitle } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
@@ -14,8 +15,6 @@ import { CONTEXT_LABELS } from "@/lib/context";
 import { formatHours } from "@/lib/hours";
 import { obsidianUri } from "@/lib/obsidian";
 import { getActiveContext, getSettings } from "@/lib/settings";
-
-const PANELS = [{ title: "Servidores", phase: "F7", href: "/infra", wide: false }];
 
 export default function HomePage() {
   return (
@@ -32,24 +31,24 @@ export default function HomePage() {
         <Suspense fallback={<Stat label="Pipeline aberto" value="—" />}>
           <PipelineStat />
         </Suspense>
-        <Stat label="Serviços online" value="—" hint="F7" />
+        <Suspense fallback={<Stat label="Serviços online" value="—" />}>
+          <ServicesStat />
+        </Suspense>
       </div>
 
       <div className="panels-grid">
-        {PANELS.map((panel) => (
-          <Section
-            key={panel.title}
-            title={panel.title}
-            wide={panel.wide}
-            action={
-              <Link href={panel.href} className="label hover:text-danger">
-                Abrir →
-              </Link>
-            }
-          >
-            <EmptyState title="Sem dados">Disponível na fase {panel.phase}.</EmptyState>
-          </Section>
-        ))}
+        <Section
+          title="Servidores"
+          action={
+            <Link href="/infra" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <InfraPanel />
+          </Suspense>
+        </Section>
         <Section
           title="Últimas despesas"
           action={
@@ -230,6 +229,73 @@ async function LatestExpenses() {
           key={e.id}
           left={`${formatDayMonth(e.occurred_on)} ${e.description}`}
           right={formatBRL(-e.amount_cents)}
+        />
+      ))}
+    </div>
+  );
+}
+
+async function ServicesStat() {
+  const services = (await getServices(await getActiveContext())).filter(
+    (s) => s.active && s.check_method !== "manual",
+  );
+  const down = services.filter((s) => s.last_state === "down");
+  const online = services.filter((s) => s.last_state === "up" || s.last_state === "degraded").length;
+  return (
+    <Stat
+      label="Serviços online"
+      value={services.length ? `${online}/${services.length}` : "—"}
+      alert={down.length > 0}
+      hint={
+        down.length
+          ? `Offline: ${down.map((s) => s.name).join(", ")}`
+          : services.length
+            ? "Todos respondendo"
+            : "Nenhum serviço"
+      }
+    />
+  );
+}
+
+async function InfraPanel() {
+  const context = await getActiveContext();
+  const [services, renewals] = await Promise.all([getServices(context), getRenewals(context)]);
+  const problems = services.filter(
+    (s) => s.active && (s.last_state === "down" || s.last_state === "degraded"),
+  );
+  const due = renewals.filter((r) => r.urgency !== "ok").slice(0, 4);
+  if (services.length === 0 && renewals.length === 0) {
+    return <EmptyState title="Nada monitorado">Cadastre a VPS, o n8n, os sites e os vencimentos.</EmptyState>;
+  }
+  if (problems.length === 0 && due.length === 0) {
+    return <p className="label">Tudo online e nenhum vencimento nos próximos 30 dias.</p>;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {problems.map((s) => (
+        <Row
+          key={s.id}
+          left={s.name}
+          right={
+            <span className="font-mono text-label text-danger uppercase">
+              {s.last_state === "down" ? "Offline" : "Lento"}
+            </span>
+          }
+        />
+      ))}
+      {due.map((r) => (
+        <Row
+          key={r.id}
+          left={r.name}
+          right={
+            <span
+              className={
+                r.urgency === "warning" ? "font-mono text-label" : "font-mono text-label text-danger"
+              }
+            >
+              {r.days_left < 0 ? "VENCIDO" : `${r.days_left} d`}
+            </span>
+          }
         />
       ))}
     </div>
