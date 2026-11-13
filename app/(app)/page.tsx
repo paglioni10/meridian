@@ -4,19 +4,18 @@ import { Suspense } from "react";
 import { EmptyState, PageHead, Progress, Row, Section, Stat } from "@/components/ui/display";
 import { getCourses } from "@/features/courses/queries";
 import { getGoals } from "@/features/goals/queries";
+import { getExpenses } from "@/features/expenses/queries";
+import { getDeals } from "@/features/freelance/queries";
 import { getSafeBase } from "@/features/income/queries";
+import { getBoard } from "@/features/projects/queries";
+import { currentMonthISO, formatDayMonth, formatEditionMeta, formatEditionTitle } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { CONTEXT_LABELS } from "@/lib/context";
-import { formatEditionMeta, formatEditionTitle } from "@/lib/dates";
 import { formatHours } from "@/lib/hours";
 import { obsidianUri } from "@/lib/obsidian";
 import { getActiveContext, getSettings } from "@/lib/settings";
 
-const PANELS = [
-  { title: "Últimas transações", phase: "F4", href: "/financas", wide: false },
-  { title: "Servidores", phase: "F7", href: "/infra", wide: false },
-  { title: "Freelance", phase: "F6", href: "/freelance", wide: true },
-];
+const PANELS = [{ title: "Servidores", phase: "F7", href: "/infra", wide: false }];
 
 export default function HomePage() {
   return (
@@ -30,7 +29,9 @@ export default function HomePage() {
         <Suspense fallback={<Stat label="Base segura" value="—" />}>
           <SafeBaseStat />
         </Suspense>
-        <Stat label="Pipeline aberto" value="—" hint="F6" />
+        <Suspense fallback={<Stat label="Pipeline aberto" value="—" />}>
+          <PipelineStat />
+        </Suspense>
         <Stat label="Serviços online" value="—" hint="F7" />
       </div>
 
@@ -49,6 +50,31 @@ export default function HomePage() {
             <EmptyState title="Sem dados">Disponível na fase {panel.phase}.</EmptyState>
           </Section>
         ))}
+        <Section
+          title="Últimas despesas"
+          action={
+            <Link href="/financas/despesas" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <LatestExpenses />
+          </Suspense>
+        </Section>
+        <Section
+          title="Em curso"
+          wide
+          action={
+            <Link href="/projetos" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <DoingTasks />
+          </Suspense>
+        </Section>
         <Section
           title="Trilha de objetivos"
           action={
@@ -156,6 +182,54 @@ async function ActiveGoals() {
             </span>
           ) : null}
         </div>
+      ))}
+    </div>
+  );
+}
+
+async function PipelineStat() {
+  const deals = (await getDeals()).filter((d) => d.stage !== "won" && d.stage !== "lost");
+  return (
+    <Stat
+      label="Pipeline aberto"
+      value={formatBRL(deals.reduce((s, d) => s + (d.value_cents ?? 0), 0))}
+      hint={`${deals.length} ${deals.length === 1 ? "negócio" : "negócios"}`}
+    />
+  );
+}
+
+async function DoingTasks() {
+  const tasks = (await getBoard(await getActiveContext())).filter((t) => t.status === "doing").slice(0, 6);
+  if (tasks.length === 0) {
+    return <EmptyState title="Nada em curso">Mova tarefas para Em curso no quadro de Projetos.</EmptyState>;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {tasks.map((t) => (
+        <Row
+          key={t.id}
+          left={t.project?.name ? `${t.title} · ${t.project.name}` : t.title}
+          right={t.due_on ? formatDayMonth(t.due_on) : ""}
+        />
+      ))}
+    </div>
+  );
+}
+
+async function LatestExpenses() {
+  const context = await getActiveContext();
+  const expenses = (await getExpenses(context, currentMonthISO(), {})).slice(0, 5);
+  if (expenses.length === 0) {
+    return <EmptyState title="Sem despesas no mês">Importe o extrato em Finanças.</EmptyState>;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {expenses.map((e) => (
+        <Row
+          key={e.id}
+          left={`${formatDayMonth(e.occurred_on)} ${e.description}`}
+          right={formatBRL(-e.amount_cents)}
+        />
       ))}
     </div>
   );

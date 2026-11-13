@@ -46,6 +46,7 @@ export async function saveExpense(_prev: ActionState, formData: FormData): Promi
     "nature",
     "context",
     "recurring_expense_id",
+    "project_id",
   ]);
   const parsed = expenseInputSchema.safeParse(raw);
   if (!parsed.success) return invalid(parsed.error.issues, raw);

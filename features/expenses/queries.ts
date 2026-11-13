@@ -107,7 +107,7 @@ export async function getExpenses(
     supabase
       .from("expenses")
       .select(
-        "id, description, amount_cents, occurred_on, category_id, nature, context, source, recurring_expense_id, category:expense_categories(name)",
+        "id, description, amount_cents, occurred_on, category_id, nature, context, source, recurring_expense_id, project_id, category:expense_categories(name)",
       )
       .gte("occurred_on", start)
       .lt("occurred_on", end),

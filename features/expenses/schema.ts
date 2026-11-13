@@ -82,6 +82,7 @@ export const expenseInputSchema = z.object({
   nature: z.enum(NATURES, { error: "Escolha fixa ou variável" }),
   context: z.enum(CONTEXT_KINDS, { error: "Contexto inválido" }),
   recurring_expense_id: optionalUuid,
+  project_id: optionalUuid,
 });
 
 export const categoryInputSchema = z.object({

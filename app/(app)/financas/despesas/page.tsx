@@ -19,7 +19,14 @@ import { cn } from "@/lib/cn";
 import { currentMonthISO, formatMonthLong, paydayISO, todayISO } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { getActiveContext } from "@/lib/settings";
-import { ExpenseList, FixedChecklist, NewExpenseButton, type FixedItem } from "./expense-ui";
+import { getProjects } from "@/features/projects/queries";
+import {
+  ExpenseList,
+  ExpenseProjectsProvider,
+  FixedChecklist,
+  NewExpenseButton,
+  type FixedItem,
+} from "./expense-ui";
 
 export const metadata: Metadata = { title: "Despesas" };
 
@@ -88,9 +95,13 @@ export default function ExpensesPage({ searchParams }: PageProps<"/financas/desp
 }
 
 async function HeadActions() {
-  const [categories, context] = await Promise.all([getCategories(), getActiveContext()]);
+  const [categories, context, projects] = await Promise.all([
+    getCategories(),
+    getActiveContext(),
+    getProjects("all"),
+  ]);
   return (
-    <>
+    <ExpenseProjectsProvider projects={projectOptions(projects)}>
       <Link href="/financas/importar" className="btn no-underline">
         Importar extrato
       </Link>
@@ -99,7 +110,7 @@ async function HeadActions() {
         today={todayISO()}
         defaultContext={context === "all" ? "personal" : context}
       />
-    </>
+    </ExpenseProjectsProvider>
   );
 }
 
@@ -275,64 +286,78 @@ async function History() {
 async function Entries({ searchParams }: { searchParams: SearchParams }) {
   const f = await readFilters(searchParams);
   const context = await getActiveContext();
-  const [expenses, categories] = await Promise.all([
+  const [expenses, categories, projects] = await Promise.all([
     getExpenses(context, f.month, { categoria: f.categoria, natureza: f.natureza }),
     getCategories(),
+    getProjects("all"),
   ]);
   const base = { mes: f.mes?.slice(0, 7) };
   const activeCategory =
     f.categoria === "sem" ? "Sem categoria" : categories.find((c) => c.id === f.categoria)?.name;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {NATURES.map((n) => (
+    <ExpenseProjectsProvider projects={projectOptions(projects)}>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {NATURES.map((n) => (
+            <Link
+              key={n}
+              href={href({ ...base, categoria: f.categoria, natureza: f.natureza === n ? undefined : n })}
+              aria-current={f.natureza === n ? "true" : undefined}
+              className="label hover:text-danger aria-[current=true]:text-foreground aria-[current=true]:underline"
+              scroll={false}
+            >
+              {NATURE_LABELS[n]}s
+            </Link>
+          ))}
           <Link
-            key={n}
-            href={href({ ...base, categoria: f.categoria, natureza: f.natureza === n ? undefined : n })}
-            aria-current={f.natureza === n ? "true" : undefined}
+            href={href({
+              ...base,
+              natureza: f.natureza,
+              categoria: f.categoria === "sem" ? undefined : "sem",
+            })}
+            aria-current={f.categoria === "sem" ? "true" : undefined}
             className="label hover:text-danger aria-[current=true]:text-foreground aria-[current=true]:underline"
             scroll={false}
           >
-            {NATURE_LABELS[n]}s
+            Sem categoria
           </Link>
-        ))}
-        <Link
-          href={href({ ...base, natureza: f.natureza, categoria: f.categoria === "sem" ? undefined : "sem" })}
-          aria-current={f.categoria === "sem" ? "true" : undefined}
-          className="label hover:text-danger aria-[current=true]:text-foreground aria-[current=true]:underline"
-          scroll={false}
-        >
-          Sem categoria
-        </Link>
-        {f.categoria || f.natureza ? (
-          <Link href={href(base)} className="label text-secondary hover:text-danger" scroll={false}>
-            Limpar filtros{activeCategory ? ` (${activeCategory})` : ""}
-          </Link>
-        ) : null}
+          {f.categoria || f.natureza ? (
+            <Link href={href(base)} className="label text-secondary hover:text-danger" scroll={false}>
+              Limpar filtros{activeCategory ? ` (${activeCategory})` : ""}
+            </Link>
+          ) : null}
+        </div>
+        {expenses.length === 0 ? (
+          <EmptyState title="Nenhuma despesa">
+            Nada encontrado em {formatMonthLong(f.month).toLowerCase()} com esses filtros.
+          </EmptyState>
+        ) : (
+          <ExpenseList
+            showContext={context === "all"}
+            categories={categories.map((c) => ({ id: c.id, name: c.name, nature: c.nature }))}
+            expenses={expenses.map((e) => ({
+              id: e.id,
+              description: e.description,
+              amount_cents: e.amount_cents,
+              occurred_on: e.occurred_on,
+              category_id: e.category_id,
+              category: e.category?.name ?? null,
+              nature: e.nature,
+              context: e.context,
+              source: e.source,
+              recurring_expense_id: e.recurring_expense_id,
+              project_id: e.project_id,
+            }))}
+          />
+        )}
       </div>
-      {expenses.length === 0 ? (
-        <EmptyState title="Nenhuma despesa">
-          Nada encontrado em {formatMonthLong(f.month).toLowerCase()} com esses filtros.
-        </EmptyState>
-      ) : (
-        <ExpenseList
-          showContext={context === "all"}
-          categories={categories.map((c) => ({ id: c.id, name: c.name, nature: c.nature }))}
-          expenses={expenses.map((e) => ({
-            id: e.id,
-            description: e.description,
-            amount_cents: e.amount_cents,
-            occurred_on: e.occurred_on,
-            category_id: e.category_id,
-            category: e.category?.name ?? null,
-            nature: e.nature,
-            context: e.context,
-            source: e.source,
-            recurring_expense_id: e.recurring_expense_id,
-          }))}
-        />
-      )}
-    </div>
+    </ExpenseProjectsProvider>
   );
+}
+
+function projectOptions(projects: Awaited<ReturnType<typeof getProjects>>) {
+  return projects
+    .filter((p) => p.status === "active" || p.status === "on_hold")
+    .map((p) => ({ id: p.id, name: p.client ? `${p.name} · ${p.client}` : p.name }));
 }

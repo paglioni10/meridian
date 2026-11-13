@@ -1,6 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useEffectEvent, useState, useTransition } from "react";
+import {
+  createContext,
+  useActionState,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Money, Tag } from "@/components/ui/display";
@@ -21,6 +30,20 @@ import { formatBRL } from "@/lib/money";
 
 export type CategoryOption = { id: string; name: string; nature: ExpenseNature };
 
+export type ProjectOption = { id: string; name: string };
+
+const ProjectsContext = createContext<ProjectOption[]>([]);
+
+export function ExpenseProjectsProvider({
+  projects,
+  children,
+}: {
+  projects: ProjectOption[];
+  children: ReactNode;
+}) {
+  return <ProjectsContext value={projects}>{children}</ProjectsContext>;
+}
+
 export type ExpenseValues = {
   id?: string;
   description: string;
@@ -30,6 +53,7 @@ export type ExpenseValues = {
   nature: ExpenseNature;
   context: ContextKind;
   recurring_expense_id: string;
+  project_id: string;
 };
 
 function ExpenseForm({
@@ -49,6 +73,7 @@ function ExpenseForm({
   const e = state.fieldErrors ?? {};
   const v = (name: string, fallback: string) => state.values?.[name] ?? fallback;
   const [nature, setNature] = useState<string>(v("nature", values.nature));
+  const projects = useContext(ProjectsContext);
 
   const onResult = useEffectEvent((result: ActionState) => {
     if (result.status === "saved") {
@@ -128,6 +153,22 @@ function ExpenseForm({
             </Select>
           )}
         </Field>
+        {projects.length > 0 ? (
+          <Field label="Projeto" error={e.project_id} hint="Liga a despesa à margem do cliente">
+            {(a) => (
+              <Select {...a} name="project_id" defaultValue={v("project_id", values.project_id)}>
+                <option value="">Sem projeto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        ) : (
+          <input type="hidden" name="project_id" value={values.project_id} />
+        )}
         <Field label="Contexto" error={e.context}>
           {(a) => (
             <Select {...a} name="context" defaultValue={v("context", values.context)}>
@@ -197,6 +238,7 @@ export function NewExpenseButton({
           nature: "variable",
           context: defaultContext,
           recurring_expense_id: "",
+          project_id: "",
         }}
       />
     </>
@@ -229,6 +271,7 @@ export type ExpenseItem = {
   context: ContextKind;
   source: string;
   recurring_expense_id: string | null;
+  project_id: string | null;
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -297,6 +340,7 @@ function ExpenseRowItem({
           nature: expense.nature,
           context: expense.context,
           recurring_expense_id: expense.recurring_expense_id ?? "",
+          project_id: expense.project_id ?? "",
         }}
       />
       <Dialog

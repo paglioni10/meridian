@@ -56,6 +56,43 @@ export type Database = {
           },
         ];
       };
+      clients: {
+        Row: {
+          company: string | null;
+          created_at: string;
+          email: string | null;
+          id: string;
+          name: string;
+          notes: string | null;
+          phone: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          company?: string | null;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          name: string;
+          notes?: string | null;
+          phone?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          company?: string | null;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string | null;
+          phone?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       course_categories: {
         Row: {
           created_at: string;
@@ -144,6 +181,70 @@ export type Database = {
           },
         ];
       };
+      deals: {
+        Row: {
+          client_id: string;
+          closed_at: string | null;
+          created_at: string;
+          expected_close_on: string | null;
+          id: string;
+          income_id: string | null;
+          lost_reason: string | null;
+          position: number;
+          stage: Database["public"]["Enums"]["deal_stage"];
+          title: string;
+          updated_at: string;
+          user_id: string;
+          value_cents: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          client_id: string;
+          closed_at?: string | null;
+          created_at?: string;
+          expected_close_on?: string | null;
+          id?: string;
+          income_id?: string | null;
+          lost_reason?: string | null;
+          position?: number;
+          stage?: Database["public"]["Enums"]["deal_stage"];
+          title: string;
+          updated_at?: string;
+          user_id?: string;
+          value_cents?: number | null;
+        };
+        Update: {
+          client_id?: string;
+          closed_at?: string | null;
+          created_at?: string;
+          expected_close_on?: string | null;
+          id?: string;
+          income_id?: string | null;
+          lost_reason?: string | null;
+          position?: number;
+          stage?: Database["public"]["Enums"]["deal_stage"];
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+          value_cents?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "deals_client_id_user_id_fkey";
+            columns: ["client_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "deals_income_id_user_id_fkey";
+            columns: ["income_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "incomes";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       expense_categories: {
         Row: {
           created_at: string;
@@ -189,6 +290,7 @@ export type Database = {
           import_batch_id: string | null;
           nature: Database["public"]["Enums"]["expense_nature"];
           occurred_on: string;
+          project_id: string | null;
           recurring_expense_id: string | null;
           source: Database["public"]["Enums"]["expense_source"];
           updated_at: string;
@@ -208,6 +310,7 @@ export type Database = {
           import_batch_id?: string | null;
           nature?: Database["public"]["Enums"]["expense_nature"];
           occurred_on: string;
+          project_id?: string | null;
           recurring_expense_id?: string | null;
           source?: Database["public"]["Enums"]["expense_source"];
           updated_at?: string;
@@ -226,6 +329,7 @@ export type Database = {
           import_batch_id?: string | null;
           nature?: Database["public"]["Enums"]["expense_nature"];
           occurred_on?: string;
+          project_id?: string | null;
           recurring_expense_id?: string | null;
           source?: Database["public"]["Enums"]["expense_source"];
           updated_at?: string;
@@ -244,6 +348,13 @@ export type Database = {
             columns: ["import_batch_id", "user_id"];
             isOneToOne: false;
             referencedRelation: "import_batches";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "expenses_project_fk";
+            columns: ["project_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
             referencedColumns: ["id", "user_id"];
           },
           {
@@ -535,6 +646,54 @@ export type Database = {
           },
         ];
       };
+      projects: {
+        Row: {
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          deal_id: string | null;
+          description: string | null;
+          due_on: string | null;
+          id: string;
+          name: string;
+          status: Database["public"]["Enums"]["project_status"];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          deal_id?: string | null;
+          description?: string | null;
+          due_on?: string | null;
+          id?: string;
+          name: string;
+          status?: Database["public"]["Enums"]["project_status"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          deal_id?: string | null;
+          description?: string | null;
+          due_on?: string | null;
+          id?: string;
+          name?: string;
+          status?: Database["public"]["Enums"]["project_status"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projects_deal_id_user_id_fkey";
+            columns: ["deal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "deals";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       recurring_expenses: {
         Row: {
           active: boolean;
@@ -547,6 +706,7 @@ export type Database = {
           ends_on: string | null;
           id: string;
           match_pattern: string | null;
+          project_id: string | null;
           starts_on: string;
           updated_at: string;
           user_id: string;
@@ -563,6 +723,7 @@ export type Database = {
           ends_on?: string | null;
           id?: string;
           match_pattern?: string | null;
+          project_id?: string | null;
           starts_on?: string;
           updated_at?: string;
           user_id?: string;
@@ -578,6 +739,7 @@ export type Database = {
           ends_on?: string | null;
           id?: string;
           match_pattern?: string | null;
+          project_id?: string | null;
           starts_on?: string;
           updated_at?: string;
           user_id?: string;
@@ -588,6 +750,73 @@ export type Database = {
             columns: ["category_id", "user_id"];
             isOneToOne: false;
             referencedRelation: "expense_categories";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "recurring_expenses_project_fk";
+            columns: ["project_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      tasks: {
+        Row: {
+          archived_at: string | null;
+          completed_at: string | null;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          description: string | null;
+          due_on: string | null;
+          id: string;
+          position: number;
+          priority: Database["public"]["Enums"]["priority_level"];
+          project_id: string | null;
+          status: Database["public"]["Enums"]["task_status"];
+          title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          archived_at?: string | null;
+          completed_at?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string | null;
+          due_on?: string | null;
+          id?: string;
+          position?: number;
+          priority?: Database["public"]["Enums"]["priority_level"];
+          project_id?: string | null;
+          status?: Database["public"]["Enums"]["task_status"];
+          title: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          archived_at?: string | null;
+          completed_at?: string | null;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          description?: string | null;
+          due_on?: string | null;
+          id?: string;
+          position?: number;
+          priority?: Database["public"]["Enums"]["priority_level"];
+          project_id?: string | null;
+          status?: Database["public"]["Enums"]["task_status"];
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_user_id_fkey";
+            columns: ["project_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
             referencedColumns: ["id", "user_id"];
           },
         ];
@@ -681,6 +910,15 @@ export type Database = {
           variable_cents: number;
         }[];
       };
+      move_task: {
+        Args: {
+          p_after_id?: string;
+          p_before_id?: string;
+          p_status: Database["public"]["Enums"]["task_status"];
+          p_task_id: string;
+        };
+        Returns: number;
+      };
       safe_monthly_base: {
         Args: { p_context?: string; p_months?: number; p_today?: string };
         Returns: {
@@ -691,10 +929,15 @@ export type Database = {
           variable_floor_cents: number;
         }[];
       };
+      win_deal: {
+        Args: { p_create_project?: boolean; p_deal_id: string; p_received_on?: string; p_source_id?: string };
+        Returns: Json;
+      };
     };
     Enums: {
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
+      deal_stage: "lead" | "briefing" | "proposal" | "negotiation" | "won" | "lost";
       expense_nature: "fixed" | "variable";
       expense_source: "manual" | "import" | "capture" | "recurring";
       goal_horizon: "short" | "medium" | "long";
@@ -702,6 +945,8 @@ export type Database = {
       import_format: "ofx" | "nubank_account_csv" | "nubank_card_csv";
       income_kind: "guaranteed" | "variable";
       priority_level: "low" | "medium" | "high" | "critical";
+      project_status: "active" | "on_hold" | "done" | "archived";
+      task_status: "todo" | "doing" | "done";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -817,6 +1062,7 @@ export const Constants = {
     Enums: {
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
+      deal_stage: ["lead", "briefing", "proposal", "negotiation", "won", "lost"],
       expense_nature: ["fixed", "variable"],
       expense_source: ["manual", "import", "capture", "recurring"],
       goal_horizon: ["short", "medium", "long"],
@@ -824,6 +1070,8 @@ export const Constants = {
       import_format: ["ofx", "nubank_account_csv", "nubank_card_csv"],
       income_kind: ["guaranteed", "variable"],
       priority_level: ["low", "medium", "high", "critical"],
+      project_status: ["active", "on_hold", "done", "archived"],
+      task_status: ["todo", "doing", "done"],
     },
   },
 } as const;
