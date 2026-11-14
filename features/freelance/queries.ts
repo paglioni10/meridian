@@ -53,3 +53,19 @@ export async function getClientsWithTotals() {
 }
 
 export type ClientRow = Awaited<ReturnType<typeof getClientsWithTotals>>[number];
+
+export async function getReminders() {
+  await getCurrentUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("billing_reminders")
+    .select(
+      "id, client_id, deal_id, amount_cents, remind_on, recurrence, day_of_month, note, last_paid_on, client:clients(name), deal:deals(title)",
+    )
+    .is("done_at", null)
+    .order("remind_on");
+  if (error) throw new Error(`Falha ao carregar cobranças: ${error.message}`);
+  return data;
+}
+
+export type ReminderRow = Awaited<ReturnType<typeof getReminders>>[number];

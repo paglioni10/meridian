@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { billingAlert } from "@/features/freelance/billing";
 import { todayISO } from "@/lib/dates";
 import type { Database } from "@/lib/supabase/database.types";
 import { deliverPending, queueAlert } from "./alerts";
@@ -231,6 +232,32 @@ export async function runDaily(admin: Admin) {
         days_left: alert.daysLeft,
         cost_cents: renewal.cost_cents,
         currency: renewal.currency,
+      },
+    });
+    if (queued) result.alerts++;
+  }
+
+  const { data: reminders } = await admin
+    .from("billing_reminders")
+    .select("id, user_id, amount_cents, remind_on, recurrence, note, client:clients(name), deal:deals(title)")
+    .is("done_at", null)
+    .lte("remind_on", today);
+  for (const reminder of reminders ?? []) {
+    const alert = billingAlert(reminder, today);
+    if (!alert) continue;
+    const queued = await queueAlert(admin, {
+      userId: reminder.user_id,
+      kind: "billing_due",
+      dedupe: alert.dedupe,
+      reminderId: reminder.id,
+      payload: {
+        client: reminder.client?.name ?? "Cliente",
+        deal: reminder.deal?.title ?? null,
+        note: reminder.note,
+        amount_cents: reminder.amount_cents,
+        remind_on: reminder.remind_on,
+        days_late: alert.daysLate,
+        recurrence: reminder.recurrence,
       },
     });
     if (queued) result.alerts++;

@@ -33,6 +33,7 @@ export type Database = {
           id: number;
           kind: Database["public"]["Enums"]["alert_kind"];
           payload: NonNullable<Json>;
+          reminder_id: string | null;
           renewal_id: string | null;
           service_id: string | null;
           user_id: string;
@@ -47,6 +48,7 @@ export type Database = {
           id?: never;
           kind: Database["public"]["Enums"]["alert_kind"];
           payload?: NonNullable<Json>;
+          reminder_id?: string | null;
           renewal_id?: string | null;
           service_id?: string | null;
           user_id: string;
@@ -60,11 +62,19 @@ export type Database = {
           id?: never;
           kind?: Database["public"]["Enums"]["alert_kind"];
           payload?: NonNullable<Json>;
+          reminder_id?: string | null;
           renewal_id?: string | null;
           service_id?: string | null;
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "alert_events_reminder_fk";
+            columns: ["reminder_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "billing_reminders";
+            referencedColumns: ["id", "user_id"];
+          },
           {
             foreignKeyName: "alert_events_renewal_id_user_id_fkey";
             columns: ["renewal_id", "user_id"];
@@ -84,6 +94,70 @@ export type Database = {
             columns: ["service_id", "user_id"];
             isOneToOne: false;
             referencedRelation: "services";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      billing_reminders: {
+        Row: {
+          amount_cents: number | null;
+          client_id: string;
+          created_at: string;
+          day_of_month: number | null;
+          deal_id: string | null;
+          done_at: string | null;
+          id: string;
+          last_paid_on: string | null;
+          note: string | null;
+          recurrence: Database["public"]["Enums"]["reminder_recurrence"];
+          remind_on: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents?: number | null;
+          client_id: string;
+          created_at?: string;
+          day_of_month?: number | null;
+          deal_id?: string | null;
+          done_at?: string | null;
+          id?: string;
+          last_paid_on?: string | null;
+          note?: string | null;
+          recurrence?: Database["public"]["Enums"]["reminder_recurrence"];
+          remind_on: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          amount_cents?: number | null;
+          client_id?: string;
+          created_at?: string;
+          day_of_month?: number | null;
+          deal_id?: string | null;
+          done_at?: string | null;
+          id?: string;
+          last_paid_on?: string | null;
+          note?: string | null;
+          recurrence?: Database["public"]["Enums"]["reminder_recurrence"];
+          remind_on?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "billing_reminders_client_id_user_id_fkey";
+            columns: ["client_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "billing_reminders_deal_id_user_id_fkey";
+            columns: ["deal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "deals";
             referencedColumns: ["id", "user_id"];
           },
         ];
@@ -1315,7 +1389,13 @@ export type Database = {
     };
     Enums: {
       alert_kind:
-        "service_down" | "service_up" | "renewal_due" | "renewal_expired" | "credit_low" | "tls_due";
+        | "service_down"
+        | "service_up"
+        | "renewal_due"
+        | "renewal_expired"
+        | "credit_low"
+        | "tls_due"
+        | "billing_due";
       check_method: "http" | "keyword" | "heartbeat" | "manual";
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
@@ -1328,6 +1408,7 @@ export type Database = {
       income_kind: "guaranteed" | "variable";
       priority_level: "low" | "medium" | "high" | "critical";
       project_status: "active" | "on_hold" | "done" | "archived";
+      reminder_recurrence: "once" | "monthly";
       renewal_kind: "domain" | "hosting" | "license" | "certificate" | "subscription" | "credit";
       service_kind: "vps" | "automation" | "api" | "website" | "database" | "other";
       service_state: "up" | "degraded" | "down" | "unknown";
@@ -1445,7 +1526,15 @@ export const Constants = {
   },
   public: {
     Enums: {
-      alert_kind: ["service_down", "service_up", "renewal_due", "renewal_expired", "credit_low", "tls_due"],
+      alert_kind: [
+        "service_down",
+        "service_up",
+        "renewal_due",
+        "renewal_expired",
+        "credit_low",
+        "tls_due",
+        "billing_due",
+      ],
       check_method: ["http", "keyword", "heartbeat", "manual"],
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
@@ -1458,6 +1547,7 @@ export const Constants = {
       income_kind: ["guaranteed", "variable"],
       priority_level: ["low", "medium", "high", "critical"],
       project_status: ["active", "on_hold", "done", "archived"],
+      reminder_recurrence: ["once", "monthly"],
       renewal_kind: ["domain", "hosting", "license", "certificate", "subscription", "credit"],
       service_kind: ["vps", "automation", "api", "website", "database", "other"],
       service_state: ["up", "degraded", "down", "unknown"],

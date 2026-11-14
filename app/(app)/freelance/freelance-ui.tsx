@@ -9,17 +9,27 @@ import { useToast } from "@/components/ui/toast";
 import {
   deleteClient,
   deleteDeal,
+  deleteReminder,
   loseDeal,
+  markReminderPaid,
   moveDealStage,
   reopenDeal,
   saveClient,
   saveDeal,
+  saveReminder,
   winDeal,
   type ActionState,
 } from "@/features/freelance/actions";
-import { OPEN_STAGES, STAGE_LABELS, type DealStage } from "@/features/freelance/schema";
+import { reminderStatus } from "@/features/freelance/billing";
+import {
+  OPEN_STAGES,
+  RECURRENCE_LABELS,
+  RECURRENCES,
+  STAGE_LABELS,
+  type DealStage,
+} from "@/features/freelance/schema";
 import { cn } from "@/lib/cn";
-import { formatDayMonth } from "@/lib/dates";
+import { formatDateFull, formatDayMonth } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 
 const initial: ActionState = { status: "idle", message: "" };
@@ -28,6 +38,20 @@ type OpenStage = (typeof OPEN_STAGES)[number];
 
 export type ClientOption = { id: string; name: string };
 export type SourceOption = { id: string; name: string };
+export type DealOption = { id: string; title: string; client_id: string };
+
+export type ReminderItem = {
+  id: string;
+  client_id: string;
+  deal_id: string | null;
+  amount_cents: number | null;
+  remind_on: string;
+  recurrence: "once" | "monthly";
+  note: string | null;
+  last_paid_on: string | null;
+  client: string;
+  deal: string | null;
+};
 
 export type DealItem = {
   id: string;
@@ -568,8 +592,18 @@ export function NewClientButton({ primary }: { primary?: boolean }) {
   );
 }
 
-function ClientRow({ client }: { client: ClientItem }) {
-  const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
+function ClientRow({
+  client,
+  clients,
+  deals,
+  today,
+}: {
+  client: ClientItem;
+  clients: ClientOption[];
+  deals: DealOption[];
+  today: string;
+}) {
+  const [dialog, setDialog] = useState<"edit" | "delete" | "remind" | null>(null);
   const { pending, run } = useRunner();
   return (
     <li className={cn("flex flex-col gap-1 border-b border-border-soft py-2", pending && "opacity-60")}>
@@ -588,7 +622,10 @@ function ClientRow({ client }: { client: ClientItem }) {
           {client.openDeals ? ` · ${client.openDeals} em aberto` : ""} · receita {formatBRL(client.revenue)} ·
           custos {formatBRL(client.costs)}
         </span>
-        <span className="-mr-2 flex">
+        <span className="-mr-2 flex flex-wrap">
+          <Button variant="ghost" className="min-h-9" onClick={() => setDialog("remind")}>
+            Lembrar de cobrar
+          </Button>
           <Button variant="ghost" className="min-h-9" onClick={() => setDialog("edit")}>
             Editar
           </Button>
@@ -602,6 +639,17 @@ function ClientRow({ client }: { client: ClientItem }) {
           {[client.email, client.phone].filter(Boolean).join(" · ")}
         </span>
       ) : null}
+      <Dialog open={dialog === "remind"} onClose={() => setDialog(null)} title={`Cobrar ${client.name}`}>
+        {dialog === "remind" ? (
+          <ReminderForm
+            clients={clients}
+            deals={deals}
+            today={today}
+            clientId={client.id}
+            onDone={() => setDialog(null)}
+          />
+        ) : null}
+      </Dialog>
       <Dialog open={dialog === "edit"} onClose={() => setDialog(null)} title="Editar cliente">
         {dialog === "edit" ? <ClientForm value={client} onDone={() => setDialog(null)} /> : null}
       </Dialog>
@@ -634,12 +682,331 @@ function ClientRow({ client }: { client: ClientItem }) {
   );
 }
 
-export function ClientList({ clients }: { clients: ClientItem[] }) {
+export function ClientList({
+  clients,
+  deals,
+  today,
+}: {
+  clients: ClientItem[];
+  deals: DealOption[];
+  today: string;
+}) {
+  const options = clients.map((c) => ({ id: c.id, name: c.name }));
   return (
     <ul className="flex flex-col">
       {clients.map((c) => (
-        <ClientRow key={c.id} client={c} />
+        <ClientRow key={c.id} client={c} clients={options} deals={deals} today={today} />
       ))}
     </ul>
+  );
+}
+
+function ReminderForm({
+  value,
+  clients,
+  deals,
+  today,
+  clientId,
+  onDone,
+}: {
+  value?: ReminderItem;
+  clients: ClientOption[];
+  deals: DealOption[];
+  today: string;
+  clientId?: string;
+  onDone: () => void;
+}) {
+  const [state, action, pending] = useActionState(saveReminder, initial);
+  useResult(state, onDone);
+  const e = state.fieldErrors ?? {};
+  const v = (k: string, f: string) => state.values?.[k] ?? f;
+  const [client, setClient] = useState(
+    state.values?.client_id ?? value?.client_id ?? clientId ?? (clients.length === 1 ? clients[0].id : ""),
+  );
+  const clientDeals = deals.filter((d) => d.client_id === client);
+  return (
+    <form
+      key={state.values ? JSON.stringify(state.values) : "i"}
+      action={action}
+      className="flex flex-col gap-4"
+      noValidate
+    >
+      <input type="hidden" name="id" value={value?.id ?? ""} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Cliente" error={e.client_id}>
+          {(a) => (
+            <Select {...a} name="client_id" value={client} onChange={(ev) => setClient(ev.target.value)}>
+              <option value="" disabled>
+                Escolha o cliente
+              </option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field label="Negócio" error={e.deal_id} hint="Opcional">
+          {(a) => (
+            <Select {...a} key={client} name="deal_id" defaultValue={v("deal_id", value?.deal_id ?? "")}>
+              <option value="">Nenhum</option>
+              {clientDeals.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.title}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field label="Cobrar em" error={e.remind_on} hint="O e-mail chega às 9h desse dia">
+          {(a) => (
+            <Input
+              {...a}
+              name="remind_on"
+              type="date"
+              defaultValue={v("remind_on", value?.remind_on ?? today)}
+            />
+          )}
+        </Field>
+        <Field label="Valor (R$)" error={e.amount_cents} hint="Opcional">
+          {(a) => (
+            <Input
+              {...a}
+              name="amount_cents"
+              inputMode="decimal"
+              defaultValue={v("amount_cents", value?.amount_cents ? formatBRL(value.amount_cents) : "")}
+            />
+          )}
+        </Field>
+        <Field label="Repetir" error={e.recurrence}>
+          {(a) => (
+            <Select {...a} name="recurrence" defaultValue={v("recurrence", value?.recurrence ?? "once")}>
+              {RECURRENCES.map((r) => (
+                <option key={r} value={r}>
+                  {RECURRENCE_LABELS[r]}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </div>
+      <Field label="Observação" error={e.note}>
+        {(a) => (
+          <Input
+            {...a}
+            name="note"
+            defaultValue={v("note", value?.note ?? "")}
+            placeholder="Parcela 2 de 3, manutenção mensal…"
+          />
+        )}
+      </Field>
+      <FormActions onCancel={onDone} pending={pending} label={value ? "Salvar" : "Criar lembrete"} />
+    </form>
+  );
+}
+
+function PaidForm({
+  reminder,
+  sources,
+  today,
+  onDone,
+}: {
+  reminder: ReminderItem;
+  sources: SourceOption[];
+  today: string;
+  onDone: () => void;
+}) {
+  const [state, action, pending] = useActionState(markReminderPaid, initial);
+  useResult(state, onDone);
+  const e = state.fieldErrors ?? {};
+  const canLaunch = reminder.amount_cents !== null;
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <input type="hidden" name="id" value={reminder.id} />
+      <p>
+        <strong>{reminder.client}</strong>
+        {reminder.deal ? ` · ${reminder.deal}` : ""}
+        {reminder.amount_cents ? ` · ${formatBRL(reminder.amount_cents)}` : ""}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {canLaunch ? (
+          <Field label="Lançar ganho em" error={e.source_id} hint="Fonte de renda variável">
+            {(a) => (
+              <Select {...a} name="source_id" defaultValue="">
+                <option value="">Não lançar</option>
+                {sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        ) : (
+          <input type="hidden" name="source_id" value="" />
+        )}
+        <Field label="Recebido em" error={e.received_on}>
+          {(a) => <Input {...a} name="received_on" type="date" defaultValue={today} />}
+        </Field>
+      </div>
+      <p className="label">
+        {reminder.recurrence === "monthly"
+          ? "O lembrete continua e passa para o mês seguinte."
+          : "O lembrete sai da lista."}
+      </p>
+      <FormActions onCancel={onDone} pending={pending} label="Marcar como cobrado" />
+    </form>
+  );
+}
+
+function ReminderRow({
+  reminder,
+  clients,
+  deals,
+  sources,
+  today,
+}: {
+  reminder: ReminderItem;
+  clients: ClientOption[];
+  deals: DealOption[];
+  sources: SourceOption[];
+  today: string;
+}) {
+  const [dialog, setDialog] = useState<"paid" | "edit" | "delete" | null>(null);
+  const { pending, run } = useRunner();
+  const status = reminderStatus(reminder.remind_on, today);
+  return (
+    <li className={cn("flex flex-col gap-1.5 border-b border-border-soft py-2.5", pending && "opacity-60")}>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 truncate">
+          {reminder.client}
+          {reminder.deal ? <span className="text-muted"> · {reminder.deal}</span> : null}
+        </span>
+        <span className="shrink-0 font-mono text-data tabular-nums">
+          {reminder.amount_cents ? formatBRL(reminder.amount_cents) : "—"}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {status === "late" ? <Tag>Atrasado</Tag> : null}
+        {status === "today" ? <Tag>Hoje</Tag> : null}
+        <span
+          className={cn(
+            "font-mono text-label tabular-nums",
+            status === "late" ? "text-danger" : "text-muted",
+          )}
+        >
+          {formatDateFull(reminder.remind_on)}
+          {reminder.recurrence === "monthly" ? " · todo mês" : ""}
+          {reminder.note ? ` · ${reminder.note}` : ""}
+        </span>
+      </div>
+      <span className="-ml-2 flex flex-wrap">
+        <Button variant="ghost" className="min-h-9 text-secondary" onClick={() => setDialog("paid")}>
+          Cobrado
+        </Button>
+        <Button variant="ghost" className="min-h-9" onClick={() => setDialog("edit")}>
+          Editar
+        </Button>
+        <Button variant="ghost" className="min-h-9 text-danger" onClick={() => setDialog("delete")}>
+          Excluir
+        </Button>
+      </span>
+      <Dialog open={dialog === "paid"} onClose={() => setDialog(null)} title="Marcar como cobrado">
+        {dialog === "paid" ? (
+          <PaidForm reminder={reminder} sources={sources} today={today} onDone={() => setDialog(null)} />
+        ) : null}
+      </Dialog>
+      <Dialog open={dialog === "edit"} onClose={() => setDialog(null)} title="Editar cobrança">
+        {dialog === "edit" ? (
+          <ReminderForm
+            value={reminder}
+            clients={clients}
+            deals={deals}
+            today={today}
+            onDone={() => setDialog(null)}
+          />
+        ) : null}
+      </Dialog>
+      <Dialog
+        open={dialog === "delete"}
+        onClose={() => setDialog(null)}
+        title="Excluir cobrança?"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setDialog(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setDialog(null);
+                run(() => deleteReminder(reminder.id), "Cobrança excluída.");
+              }}
+            >
+              Excluir
+            </Button>
+          </>
+        }
+      >
+        <p>
+          O lembrete de <strong>{reminder.client}</strong> deixa de existir
+          {reminder.recurrence === "monthly" ? " e os próximos meses não serão lembrados" : ""}.
+        </p>
+      </Dialog>
+    </li>
+  );
+}
+
+export function ReminderList({
+  reminders,
+  clients,
+  deals,
+  sources,
+  today,
+}: {
+  reminders: ReminderItem[];
+  clients: ClientOption[];
+  deals: DealOption[];
+  sources: SourceOption[];
+  today: string;
+}) {
+  return (
+    <ul className="flex flex-col">
+      {reminders.map((r) => (
+        <ReminderRow
+          key={r.id}
+          reminder={r}
+          clients={clients}
+          deals={deals}
+          sources={sources}
+          today={today}
+        />
+      ))}
+    </ul>
+  );
+}
+
+export function NewReminderButton({
+  clients,
+  deals,
+  today,
+}: {
+  clients: ClientOption[];
+  deals: DealOption[];
+  today: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button disabled={clients.length === 0} onClick={() => setOpen(true)}>
+        Nova cobrança
+      </Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Lembrar de cobrar">
+        {open ? (
+          <ReminderForm clients={clients} deals={deals} today={today} onDone={() => setOpen(false)} />
+        ) : null}
+      </Dialog>
+    </>
   );
 }

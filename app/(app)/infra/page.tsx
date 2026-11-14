@@ -154,11 +154,12 @@ const ALERT_LABELS: Record<AlertRow["kind"], string> = {
   renewal_expired: "Vencido",
   credit_low: "Crédito acabando",
   tls_due: "Certificado",
+  billing_due: "Cobrar",
 };
 
 function alertSubject(alert: AlertRow) {
   const p = (alert.payload ?? {}) as Record<string, unknown>;
-  const name = String(p.service ?? p.renewal ?? "");
+  const name = String(p.service ?? p.renewal ?? p.client ?? "");
   const type =
     typeof p.type === "string" && p.type in RENEWAL_KIND_LABELS
       ? ` · ${RENEWAL_KIND_LABELS[p.type as "domain"]}`

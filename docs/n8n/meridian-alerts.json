@@ -61,7 +61,7 @@
             {
               "name": "text",
               "type": "string",
-              "value": "={{ ({ service_down: 'OFFLINE', service_up: 'VOLTOU', renewal_due: 'A VENCER', renewal_expired: 'VENCIDO', credit_low: 'CRÉDITO ACABANDO', tls_due: 'CERTIFICADO' })[$('Webhook').item.json.body.kind] + ' · ' + ($('Webhook').item.json.body.service || $('Webhook').item.json.body.renewal) + ($('Webhook').item.json.body.days_left !== undefined ? ' · ' + $('Webhook').item.json.body.days_left + ' dias' : '') + ($('Webhook').item.json.body.expires_on ? ' · ' + $('Webhook').item.json.body.expires_on : '') + ($('Webhook').item.json.body.error ? '\\n' + $('Webhook').item.json.body.error : '') }}"
+              "value": "={{ (() => { const b = $('Webhook').item.json.body; const labels = { service_down: 'OFFLINE', service_up: 'VOLTOU', renewal_due: 'A VENCER', renewal_expired: 'VENCIDO', credit_low: 'CRÉDITO ACABANDO', tls_due: 'CERTIFICADO', billing_due: 'COBRAR' }; const money = b.amount_cents ? ' · R$ ' + (b.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''; const extra = b.kind === 'billing_due' ? (b.deal ? ' · ' + b.deal : '') + money + (b.days_late > 0 ? ' · ' + b.days_late + ' dias de atraso' : '') + (b.note ? '\\n' + b.note : '') : (b.days_left !== undefined ? ' · ' + b.days_left + ' dias' : '') + (b.expires_on ? ' · ' + b.expires_on : '') + (b.error ? '\\n' + b.error : ''); return labels[b.kind] + ' · ' + (b.client || b.service || b.renewal) + extra; })() }}"
             }
           ]
         },
@@ -76,9 +76,9 @@
       "parameters": {
         "fromEmail": "<REMETENTE>",
         "toEmail": "<SEU_EMAIL>",
-        "subject": "={{ 'Meridian · ' + $json.text.split('\n')[0] }}",
+        "subject": "={{ 'Meridian · ' + $json.text.split('\\n')[0] }}",
         "emailFormat": "text",
-        "text": "={{ $json.text + '\n\nAbrir: <MERIDIAN_URL>/infra' }}",
+        "text": "={{ $json.text + '\\n\\nAbrir: <MERIDIAN_URL>' + ($('Webhook').item.json.body.kind === 'billing_due' ? '/freelance' : '/infra') }}",
         "options": {
           "appendAttribution": false
         }

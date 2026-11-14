@@ -4,7 +4,15 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { clientInputSchema, dealInputSchema, OPEN_STAGES, winInputSchema } from "./schema";
+import { nextMonthly } from "./billing";
+import {
+  clientInputSchema,
+  dealInputSchema,
+  OPEN_STAGES,
+  reminderInputSchema,
+  reminderPaidSchema,
+  winInputSchema,
+} from "./schema";
 
 export type ActionState = {
   status: "idle" | "saved" | "error";
@@ -135,5 +143,108 @@ export async function deleteDeal(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("deals").delete().eq("id", dealId);
   if (error) throw new Error("Não foi possível excluir o negócio.");
+  refresh();
+}
+
+export async function saveReminder(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const raw = collect(formData, [
+    "id",
+    "client_id",
+    "deal_id",
+    "amount_cents",
+    "remind_on",
+    "recurrence",
+    "note",
+  ]);
+  const parsed = reminderInputSchema.safeParse(raw);
+  if (!parsed.success) return invalid(parsed.error.issues, raw);
+
+  const user = await getCurrentUser();
+  const supabase = await createClient();
+  const { id, ...values } = parsed.data;
+  const payload = {
+    ...values,
+    day_of_month: values.recurrence === "monthly" ? Number(values.remind_on.slice(8, 10)) : null,
+  };
+  const { error } = id
+    ? await supabase.from("billing_reminders").update(payload).eq("id", id)
+    : await supabase.from("billing_reminders").insert({ ...payload, user_id: user.id });
+  if (error?.code === "23514") {
+    return {
+      status: "error",
+      message: "Revise os campos destacados.",
+      fieldErrors: { deal_id: "Esse negócio é de outro cliente" },
+      values: raw,
+    };
+  }
+  if (error) return { status: "error", message: "Não foi possível salvar a cobrança.", values: raw };
+
+  refresh();
+  return { status: "saved", message: id ? "Cobrança atualizada." : "Lembrete de cobrança criado." };
+}
+
+export async function markReminderPaid(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const raw = collect(formData, ["id", "source_id", "received_on"]);
+  const parsed = reminderPaidSchema.safeParse(raw);
+  if (!parsed.success) return invalid(parsed.error.issues, raw);
+
+  await getCurrentUser();
+  const supabase = await createClient();
+  const { data: reminder, error } = await supabase
+    .from("billing_reminders")
+    .select(
+      "id, amount_cents, remind_on, recurrence, day_of_month, note, client:clients(name), deal:deals(title)",
+    )
+    .eq("id", parsed.data.id)
+    .single();
+  if (error || !reminder) return { status: "error", message: "Cobrança não encontrada.", values: raw };
+
+  const { source_id, received_on } = parsed.data;
+  let launched = false;
+  if (source_id && reminder.amount_cents) {
+    const label = reminder.deal?.title ?? reminder.note ?? "Cobrança";
+    const { error: incomeError } = await supabase.from("incomes").insert({
+      source_id,
+      kind: "variable",
+      context: "freelance",
+      competence_month: `${received_on.slice(0, 7)}-01`,
+      received_on,
+      amount_cents: reminder.amount_cents,
+      description: `${reminder.client?.name ?? "Cliente"} · ${label}`.slice(0, 200),
+    });
+    if (incomeError) return { status: "error", message: "Não foi possível lançar o ganho.", values: raw };
+    launched = true;
+  }
+
+  const update =
+    reminder.recurrence === "monthly"
+      ? {
+          remind_on: nextMonthly(
+            reminder.remind_on,
+            reminder.day_of_month ?? Number(reminder.remind_on.slice(8, 10)),
+          ),
+          last_paid_on: received_on,
+        }
+      : { done_at: new Date().toISOString(), last_paid_on: received_on };
+  const { error: updateError } = await supabase
+    .from("billing_reminders")
+    .update(update)
+    .eq("id", reminder.id);
+  if (updateError) return { status: "error", message: "Não foi possível marcar como cobrado.", values: raw };
+
+  refresh();
+  const next = update.remind_on ? ` Próxima em ${update.remind_on.split("-").reverse().join("/")}.` : "";
+  return {
+    status: "saved",
+    message: `${launched ? "Cobrado e lançado em Ganhos." : "Marcado como cobrado."}${next}`,
+  };
+}
+
+export async function deleteReminder(id: string) {
+  const reminderId = z.uuid().parse(id);
+  await getCurrentUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from("billing_reminders").delete().eq("id", reminderId);
+  if (error) throw new Error("Não foi possível excluir a cobrança.");
   refresh();
 }

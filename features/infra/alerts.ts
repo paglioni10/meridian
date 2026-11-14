@@ -13,6 +13,7 @@ export type AlertInput = {
   dedupe: string;
   serviceId?: string | null;
   renewalId?: string | null;
+  reminderId?: string | null;
   payload: Record<string, Json>;
 };
 
@@ -26,6 +27,7 @@ export async function queueAlert(admin: Admin, alert: AlertInput): Promise<boole
         dedupe_key: alert.dedupe,
         service_id: alert.serviceId ?? null,
         renewal_id: alert.renewalId ?? null,
+        reminder_id: alert.reminderId ?? null,
         payload: alert.payload,
       },
       { onConflict: "user_id,dedupe_key", ignoreDuplicates: true },

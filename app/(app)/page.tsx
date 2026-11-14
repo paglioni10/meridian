@@ -5,11 +5,18 @@ import { EmptyState, PageHead, Progress, Row, Section, Stat } from "@/components
 import { getCourses } from "@/features/courses/queries";
 import { getGoals } from "@/features/goals/queries";
 import { getExpenses } from "@/features/expenses/queries";
-import { getDeals } from "@/features/freelance/queries";
+import { reminderStatus } from "@/features/freelance/billing";
+import { getDeals, getReminders } from "@/features/freelance/queries";
 import { getSafeBase } from "@/features/income/queries";
 import { getRenewals, getServices } from "@/features/infra/queries";
 import { getBoard } from "@/features/projects/queries";
-import { currentMonthISO, formatDayMonth, formatEditionMeta, formatEditionTitle } from "@/lib/dates";
+import {
+  currentMonthISO,
+  formatDayMonth,
+  formatEditionMeta,
+  formatEditionTitle,
+  todayISO,
+} from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { CONTEXT_LABELS } from "@/lib/context";
 import { formatHours } from "@/lib/hours";
@@ -47,6 +54,18 @@ export default function HomePage() {
         >
           <Suspense fallback={<p className="label">Carregando</p>}>
             <InfraPanel />
+          </Suspense>
+        </Section>
+        <Section
+          title="Cobranças"
+          action={
+            <Link href="/freelance" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <BillingPanel />
           </Suspense>
         </Section>
         <Section
@@ -294,6 +313,33 @@ async function InfraPanel() {
               }
             >
               {r.days_left < 0 ? "VENCIDO" : `${r.days_left} d`}
+            </span>
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+async function BillingPanel() {
+  const pending = await getReminders();
+  const today = todayISO();
+  const reminders = pending
+    .map((r) => ({ ...r, status: reminderStatus(r.remind_on, today) }))
+    .filter((r) => r.status !== "later")
+    .slice(0, 5);
+  if (reminders.length === 0) return <p className="label">Nenhuma cobrança nos próximos 7 dias.</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {reminders.map((r) => (
+        <Row
+          key={r.id}
+          left={`${r.client?.name ?? "Cliente"}${r.amount_cents ? ` · ${formatBRL(r.amount_cents)}` : ""}`}
+          right={
+            <span
+              className={r.status === "soon" ? "font-mono text-label" : "font-mono text-label text-danger"}
+            >
+              {r.status === "late" ? "ATRASADO" : r.status === "today" ? "HOJE" : formatDayMonth(r.remind_on)}
             </span>
           }
         />

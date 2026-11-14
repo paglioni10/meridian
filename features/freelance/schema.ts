@@ -65,3 +65,33 @@ export const winInputSchema = z.object({
   received_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data"),
   create_project: z.string().transform((v) => v === "on"),
 });
+
+export const RECURRENCES = ["once", "monthly"] as const;
+export const RECURRENCE_LABELS: Record<(typeof RECURRENCES)[number], string> = {
+  once: "Uma vez",
+  monthly: "Todo mês",
+};
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data");
+
+export const reminderInputSchema = z.object({
+  id: z.uuid().optional().or(emptyToUndefined),
+  client_id: z.uuid({ error: "Escolha o cliente" }),
+  deal_id: z
+    .string()
+    .transform((v) => (v === "" ? null : v))
+    .pipe(z.uuid({ error: "Negócio inválido" }).nullable()),
+  amount_cents: optionalMoney,
+  remind_on: isoDate,
+  recurrence: z.enum(RECURRENCES, { error: "Escolha a repetição" }),
+  note: optionalText(200),
+});
+
+export const reminderPaidSchema = z.object({
+  id: z.uuid(),
+  source_id: z
+    .string()
+    .transform((v) => (v === "" ? null : v))
+    .pipe(z.uuid({ error: "Fonte inválida" }).nullable()),
+  received_on: isoDate,
+});
