@@ -678,6 +678,49 @@ export type Database = {
         };
         Relationships: [];
       };
+      inbox_items: {
+        Row: {
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          id: string;
+          kind: Database["public"]["Enums"]["capture_kind"];
+          payload: NonNullable<Json>;
+          processed_at: string | null;
+          raw_text: string;
+          routed_id: string | null;
+          routed_table: string | null;
+          url: string | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["capture_kind"];
+          payload?: NonNullable<Json>;
+          processed_at?: string | null;
+          raw_text: string;
+          routed_id?: string | null;
+          routed_table?: string | null;
+          url?: string | null;
+          user_id?: string;
+        };
+        Update: {
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["capture_kind"];
+          payload?: NonNullable<Json>;
+          processed_at?: string | null;
+          raw_text?: string;
+          routed_id?: string | null;
+          routed_table?: string | null;
+          url?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       income_sources: {
         Row: {
           active: boolean;
@@ -1660,6 +1703,7 @@ export type Database = {
         | "tls_due"
         | "billing_due";
       asset_class: "cash" | "fixed_income" | "equity" | "international" | "crypto";
+      capture_kind: "idea" | "expense" | "income" | "task" | "link" | "goal" | "investment";
       check_method: "http" | "keyword" | "heartbeat" | "manual";
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
@@ -1803,6 +1847,7 @@ export const Constants = {
         "billing_due",
       ],
       asset_class: ["cash", "fixed_income", "equity", "international", "crypto"],
+      capture_kind: ["idea", "expense", "income", "task", "link", "goal", "investment"],
       check_method: ["http", "keyword", "heartbeat", "manual"],
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],

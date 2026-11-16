@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/projetos", label: "Projetos" },
   { href: "/infra", label: "Servidores" },
   { href: "/cursos", label: "Estudos" },
+  { href: "/inbox", label: "Inbox" },
   { href: "/ajustes", label: "Ajustes" },
 ];
 

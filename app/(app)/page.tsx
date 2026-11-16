@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { EmptyState, PageHead, Progress, Row, Section, Stat } from "@/components/ui/display";
 import { getCourses } from "@/features/courses/queries";
 import { getGoals } from "@/features/goals/queries";
-import { getExpenses } from "@/features/expenses/queries";
+import { getExpenses, getMonthSeries } from "@/features/expenses/queries";
 import { reminderStatus } from "@/features/freelance/billing";
 import { getDeals, getReminders } from "@/features/freelance/queries";
 import { getSafeBase } from "@/features/income/queries";
@@ -32,7 +32,9 @@ export default function HomePage() {
       </Suspense>
 
       <div className="stats-grid">
-        <Stat label="Saldo do mês" value="—" hint="F4" />
+        <Suspense fallback={<Stat label="Saldo do mês" value="—" />}>
+          <MonthBalanceStat />
+        </Suspense>
         <Suspense fallback={<Stat label="Base segura" value="—" />}>
           <SafeBaseStat />
         </Suspense>
@@ -364,6 +366,26 @@ async function EquityStat() {
         s.equity_cents
           ? `Resultado ${sign}${formatBRL(Math.abs(s.result_cents))}`
           : "Cadastre seus investimentos"
+      }
+    />
+  );
+}
+
+async function MonthBalanceStat() {
+  const context = await getActiveContext();
+  const month = await getMonthSeries(context, currentMonthISO());
+  const income = Number(month?.income_cents ?? 0);
+  const spent = Number(month?.total_cents ?? 0);
+  const balance = income - spent;
+  return (
+    <Stat
+      label="Saldo do mês"
+      value={income || spent ? `${balance < 0 ? "−" : ""}${formatBRL(Math.abs(balance))}` : "—"}
+      alert={balance < 0}
+      hint={
+        income || spent
+          ? `Ganhos ${formatBRL(income)} · gastos ${formatBRL(spent)}`
+          : "Sem lançamentos no mês"
       }
     />
   );
