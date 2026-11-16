@@ -9,6 +9,10 @@ export async function getGraphSnapshot(context: AppContext): Promise<GraphData> 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("graph_snapshot", { p_context: context });
   if (error) throw new Error(`Falha ao carregar o grafo: ${error.message}`);
-  const raw = data as unknown as { nodes: Omit<GraphNode, "degree" | "alert">[]; links: GraphLink[] };
-  return normalizeSnapshot({ nodes: raw.nodes ?? [], links: raw.links ?? [] });
+  const raw = data as unknown as {
+    nodes: Omit<GraphNode, "degree" | "alert">[];
+    links: GraphLink[];
+    hidden?: GraphLink[];
+  };
+  return normalizeSnapshot({ nodes: raw.nodes ?? [], links: raw.links ?? [], hidden: raw.hidden ?? [] });
 }

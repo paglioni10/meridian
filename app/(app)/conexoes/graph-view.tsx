@@ -2,20 +2,22 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/segmented";
 import { useToast } from "@/components/ui/toast";
-import { createLink, deleteLink, searchEntities } from "@/features/graph/actions";
+import { createLink, deleteLink, hideEdge, searchEntities, unhideEdge } from "@/features/graph/actions";
 import { connectionsOf } from "@/features/graph/neighbors";
 import {
   ENTITY_HREF,
   ENTITY_LABELS,
   ENTITY_TYPES,
   endId,
+  splitNodeId,
   type EntityType,
   type GraphData,
+  type GraphLink,
   type GraphNode,
 } from "@/features/graph/schema";
 import { cn } from "@/lib/cn";
@@ -51,17 +53,101 @@ function Legend() {
       <span>⬢ servidor</span>
       <span>○ nota</span>
       <span>— pessoal · ╌ trabalho · ┈ freelance</span>
+      <span>linha tracejada = automática</span>
       <span className="text-danger">vermelho = alerta</span>
     </div>
   );
+}
+
+function useLinkOps() {
+  const [pending, startTransition] = useTransition();
+  const toast = useToast();
+
+  function connect(
+    from: { type: EntityType; id: string },
+    to: { type: EntityType; id: string },
+    label: string,
+    onDone?: () => void,
+  ) {
+    startTransition(async () => {
+      const r = await createLink({
+        source_type: from.type,
+        source_id: from.id,
+        target_type: to.type,
+        target_id: to.id,
+        label,
+      });
+      if (!r.ok || !r.id) {
+        toast(r.message, "alert");
+        return;
+      }
+      onDone?.();
+      const id = r.id;
+      toast("Conexão criada.", "default", {
+        label: "Desfazer",
+        onAction: () =>
+          startTransition(async () =>
+            deleteLink(id).catch(() => toast("Não foi possível desfazer.", "alert")),
+          ),
+      });
+    });
+  }
+
+  function undo(link: GraphLink) {
+    const s = endId(link.source);
+    const t = endId(link.target);
+    startTransition(async () => {
+      try {
+        if (link.origin === "manual" && link.linkId) {
+          await deleteLink(link.linkId);
+          const from = splitNodeId(s);
+          const to = splitNodeId(t);
+          toast("Conexão desfeita.", "default", {
+            label: "Refazer",
+            onAction: () =>
+              startTransition(async () => {
+                await createLink({
+                  source_type: from.type,
+                  source_id: from.id,
+                  target_type: to.type,
+                  target_id: to.id,
+                  label: link.label ?? "",
+                });
+              }),
+          });
+        } else {
+          await hideEdge(s, t);
+          toast("Conexão automática desfeita no grafo.", "default", {
+            label: "Refazer",
+            onAction: () => startTransition(async () => unhideEdge(s, t)),
+          });
+        }
+      } catch (e) {
+        toast((e as Error).message, "alert");
+      }
+    });
+  }
+
+  function restore(link: GraphLink) {
+    startTransition(async () => {
+      try {
+        await unhideEdge(endId(link.source), endId(link.target));
+        toast("Conexão restaurada.");
+      } catch (e) {
+        toast((e as Error).message, "alert");
+      }
+    });
+  }
+
+  return { pending, connect, undo, restore };
 }
 
 function LinkPicker({ node, onDone }: { node: GraphNode; onDone: () => void }) {
   const [query, setQuery] = useState("");
   const [label, setLabel] = useState("");
   const [results, setResults] = useState<Awaited<ReturnType<typeof searchEntities>>>([]);
-  const [pending, startTransition] = useTransition();
-  const toast = useToast();
+  const [searching, startSearch] = useTransition();
+  const ops = useLinkOps();
 
   function search(value: string) {
     setQuery(value);
@@ -69,35 +155,11 @@ function LinkPicker({ node, onDone }: { node: GraphNode; onDone: () => void }) {
       setResults([]);
       return;
     }
-    startTransition(async () => setResults(await searchEntities(value)));
-  }
-
-  function connect(target: { type: EntityType; id: string }) {
-    startTransition(async () => {
-      const r = await createLink({
-        source_type: node.type,
-        source_id: node.entityId,
-        target_type: target.type,
-        target_id: target.id,
-        label,
-      });
-      toast(r.message, r.ok ? undefined : "alert");
-      if (r.ok) onDone();
-    });
+    startSearch(async () => setResults(await searchEntities(value)));
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="field">
-        <span className="field-label">Rótulo (opcional)</span>
-        <input
-          className="input"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          maxLength={40}
-          placeholder="aplicado em, financia, documenta"
-        />
-      </label>
       <label className="field">
         <span className="field-label">Conectar a</span>
         <input
@@ -108,14 +170,24 @@ function LinkPicker({ node, onDone }: { node: GraphNode; onDone: () => void }) {
           autoFocus
         />
       </label>
-      <ul className={cn("flex flex-col", pending && "opacity-60")} aria-live="polite">
+      <label className="field">
+        <span className="field-label">Rótulo (opcional)</span>
+        <input
+          className="input"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          maxLength={40}
+          placeholder="aplicado em, financia, documenta"
+        />
+      </label>
+      <ul className={cn("flex flex-col", (searching || ops.pending) && "opacity-60")} aria-live="polite">
         {results
           .filter((r) => !(r.type === node.type && r.id === node.entityId))
           .map((r) => (
             <li key={`${r.type}:${r.id}`}>
               <button
                 type="button"
-                onClick={() => connect(r)}
+                onClick={() => ops.connect({ type: node.type, id: node.entityId }, r, label, onDone)}
                 className="flex min-h-tap w-full items-center justify-between gap-3 border-b border-border-soft text-left hover:text-danger"
               >
                 <span className="truncate">{r.label}</span>
@@ -136,24 +208,25 @@ function NodePanel({
   vault,
   notePaths,
   onSelect,
+  onStartLink,
 }: {
   node: GraphNode;
   data: GraphData;
   vault: string | null;
   notePaths: Record<string, string>;
   onSelect: (id: string) => void;
+  onStartLink: () => void;
 }) {
   const [picking, setPicking] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const toast = useToast();
+  const ops = useLinkOps();
   const connections = connectionsOf(data, node.id);
-  const notePath =
+  const noteEntity =
     node.type === "note"
-      ? notePaths[node.entityId]
+      ? node.entityId
       : node.type === "course"
         ? connections.find((c) => c.other?.type === "note")?.other?.entityId
         : undefined;
-  const path = node.type === "note" ? notePath : notePath ? notePaths[notePath] : undefined;
+  const path = noteEntity ? notePaths[noteEntity] : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -174,11 +247,17 @@ function NodePanel({
             </dd>
           </>
         ) : null}
-        <dt className="label">Conexões</dt>
-        <dd>{node.degree}</dd>
       </dl>
+      <div className="-ml-2 flex flex-wrap">
+        <Button variant="primary" className="ml-2 min-h-9" onClick={onStartLink}>
+          Conectar clicando
+        </Button>
+        <Button variant="ghost" className="min-h-9" onClick={() => setPicking(true)}>
+          Buscar e conectar
+        </Button>
+      </div>
       {connections.length ? (
-        <ul className="flex flex-col">
+        <ul className={cn("flex flex-col", ops.pending && "opacity-60")}>
           {connections.map(({ link, other }) => (
             <li
               key={`${endId(link.source)}-${endId(link.target)}-${link.label}`}
@@ -191,31 +270,19 @@ function NodePanel({
               >
                 <span className="mr-2 font-mono text-label text-muted uppercase">
                   {link.label ?? "ligado a"}
+                  {link.origin === "derived" ? " · auto" : ""}
                 </span>
                 {other!.label}
               </button>
-              {link.origin === "manual" && link.linkId ? (
-                <button
-                  type="button"
-                  disabled={pending}
-                  aria-label={`Remover conexão com ${other!.label}`}
-                  className="shrink-0 font-mono text-label text-danger uppercase"
-                  onClick={() =>
-                    startTransition(async () => {
-                      try {
-                        await deleteLink(link.linkId!);
-                        toast("Conexão removida.");
-                      } catch (e) {
-                        toast((e as Error).message, "alert");
-                      }
-                    })
-                  }
-                >
-                  Remover
-                </button>
-              ) : (
-                <span className="shrink-0 font-mono text-label text-muted">automática</span>
-              )}
+              <button
+                type="button"
+                disabled={ops.pending}
+                aria-label={`Desfazer conexão com ${other!.label}`}
+                className="shrink-0 font-mono text-label text-danger uppercase"
+                onClick={() => ops.undo(link)}
+              >
+                Desfazer
+              </button>
             </li>
           ))}
         </ul>
@@ -223,9 +290,6 @@ function NodePanel({
         <p className="label">Sem conexões ainda.</p>
       )}
       <div className="-ml-2 flex flex-wrap">
-        <Button variant="ghost" className="min-h-9" onClick={() => setPicking(true)}>
-          Conectar a…
-        </Button>
         <Link href={ENTITY_HREF[node.type]} className="btn btn-ghost min-h-9 no-underline">
           Abrir no módulo
         </Link>
@@ -279,6 +343,38 @@ function GraphList({ data, onOpen }: { data: GraphData; onOpen: (id: string) => 
   );
 }
 
+function HiddenLinks({ data }: { data: GraphData }) {
+  const ops = useLinkOps();
+  const byId = new Map(data.nodes.map((n) => [n.id, n.label]));
+  const hidden = data.hidden ?? [];
+  if (hidden.length === 0) return null;
+  return (
+    <details className="border-t border-border-soft pt-2">
+      <summary className="label cursor-pointer">Conexões automáticas desfeitas · {hidden.length}</summary>
+      <ul className={cn("mt-2 flex flex-col", ops.pending && "opacity-60")}>
+        {hidden.map((l) => (
+          <li
+            key={`${endId(l.source)}-${endId(l.target)}`}
+            className="flex items-center justify-between gap-2 border-b border-border-soft py-1.5"
+          >
+            <span className="min-w-0 truncate">
+              {byId.get(endId(l.source)) ?? "Item"} → {byId.get(endId(l.target)) ?? "Item"}
+              {l.label ? <span className="text-muted"> · {l.label}</span> : null}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 font-mono text-label text-secondary uppercase"
+              onClick={() => ops.restore(l)}
+            >
+              Restaurar
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function GraphView({
   data,
   vault,
@@ -291,8 +387,17 @@ export function GraphView({
   const [mode, setMode] = useState<"graph" | "list">("graph");
   const [hidden, setHidden] = useState<Set<EntityType>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [linkFrom, setLinkFrom] = useState<GraphNode | null>(null);
   const [query, setQuery] = useState("");
   const [centerOn, setCenterOn] = useState<{ id: string; at: number } | null>(null);
+  const ops = useLinkOps();
+
+  useEffect(() => {
+    if (!linkFrom) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setLinkFrom(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [linkFrom]);
 
   const filtered = useMemo<GraphData>(() => {
     const nodes = data.nodes.filter((n) => !hidden.has(n.type));
@@ -303,13 +408,33 @@ export function GraphView({
   const selected = data.nodes.find((n) => n.id === selectedId) ?? null;
   const present = ENTITY_TYPES.filter((t) => data.nodes.some((n) => n.type === t));
 
+  function pick(id: string) {
+    if (linkFrom) {
+      if (id === linkFrom.id) {
+        setLinkFrom(null);
+        return;
+      }
+      const target = data.nodes.find((n) => n.id === id);
+      if (target) {
+        ops.connect(
+          { type: linkFrom.type, id: linkFrom.entityId },
+          { type: target.type, id: target.entityId },
+          "",
+        );
+      }
+      setLinkFrom(null);
+      return;
+    }
+    setSelectedId(id);
+  }
+
   function find(value: string) {
     setQuery(value);
     const q = value.trim().toLowerCase();
     if (q.length < 2) return;
     const match = filtered.nodes.find((n) => n.label.toLowerCase().includes(q));
     if (match) {
-      setSelectedId(match.id);
+      if (!linkFrom) setSelectedId(match.id);
       setCenterOn({ id: match.id, at: Date.now() });
     }
   }
@@ -335,18 +460,25 @@ export function GraphView({
           value={mode}
           onChange={(v) => setMode(v as "graph" | "list")}
         />
-        {mode === "graph" ? (
-          <label className="field md:w-72">
-            <span className="field-label">Buscar nó</span>
-            <input
-              className="input"
-              value={query}
-              onChange={(e) => find(e.target.value)}
-              placeholder="Nome"
-            />
-          </label>
-        ) : null}
+        <label className="field md:w-72">
+          <span className="field-label">Buscar item</span>
+          <input className="input" value={query} onChange={(e) => find(e.target.value)} placeholder="Nome" />
+        </label>
       </div>
+      {linkFrom ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-2 border border-secondary px-3 py-2 font-mono text-data"
+        >
+          <span>
+            Conectando <strong>{linkFrom.label}</strong>: clique no outro item{" "}
+            {mode === "graph" ? "no grafo" : "na lista"}.
+          </span>
+          <Button variant="ghost" className="min-h-9" onClick={() => setLinkFrom(null)}>
+            Cancelar
+          </Button>
+        </div>
+      ) : null}
       {mode === "graph" ? (
         <>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Tipos visíveis">
@@ -371,16 +503,17 @@ export function GraphView({
           </div>
           <GraphCanvas
             data={filtered}
-            selectedId={selectedId}
-            onSelect={(n) => setSelectedId(n.id)}
+            selectedId={linkFrom?.id ?? selectedId}
+            onSelect={(n) => pick(n.id)}
             centerOn={centerOn}
             height={560}
           />
           <Legend />
         </>
       ) : (
-        <GraphList data={data} onOpen={setSelectedId} />
+        <GraphList data={data} onOpen={pick} />
       )}
+      <HiddenLinks data={data} />
       <Dialog open={selected !== null} onClose={() => setSelectedId(null)} title={selected?.label ?? ""}>
         {selected ? (
           <NodePanel
@@ -391,6 +524,10 @@ export function GraphView({
             onSelect={(id) => {
               setSelectedId(id);
               setCenterOn({ id, at: Date.now() });
+            }}
+            onStartLink={() => {
+              setLinkFrom(selected);
+              setSelectedId(null);
             }}
           />
         ) : null}

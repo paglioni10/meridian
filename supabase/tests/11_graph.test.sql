@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(9);
+select plan(11);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'a@meridian.test'),
@@ -65,6 +65,15 @@ select throws_ok(
   null,
   'duplicate link is rejected'
 );
+
+insert into public.graph_hidden_edges (source_type, source_id, target_type, target_id)
+values ('deal', 'b0000000-0000-0000-0000-000000000004', 'client', 'b0000000-0000-0000-0000-000000000003');
+select is(
+  (select count(*)::int from jsonb_array_elements(public.graph_snapshot() -> 'links') l where l ->> 'source' like 'deal:%'),
+  0,
+  'hidden derived edge leaves the graph'
+);
+select is(jsonb_array_length(public.graph_snapshot() -> 'hidden'), 1, 'hidden edge is listed for restore');
 
 delete from public.courses where id = 'b0000000-0000-0000-0000-000000000001';
 select is((select count(*)::int from public.entity_links), 0, 'deleting the course removes its links');

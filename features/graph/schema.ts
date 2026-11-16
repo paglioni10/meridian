@@ -58,7 +58,7 @@ export type GraphLink = {
   linkId: string | null;
 };
 
-export type GraphData = { nodes: GraphNode[]; links: GraphLink[] };
+export type GraphData = { nodes: GraphNode[]; links: GraphLink[]; hidden?: GraphLink[] };
 
 export const ALERT_STATES = new Set(["late", "down"]);
 
@@ -83,6 +83,7 @@ export function endId(end: string | GraphNode): string {
 export function normalizeSnapshot(raw: {
   nodes: Omit<GraphNode, "degree" | "alert">[];
   links: GraphLink[];
+  hidden?: GraphLink[];
 }): GraphData {
   const degree = new Map<string, number>();
   for (const l of raw.links) {
@@ -94,5 +95,10 @@ export function normalizeSnapshot(raw: {
     .map((n) => ({ ...n, degree: degree.get(n.id) ?? 0, alert: ALERT_STATES.has(n.state ?? "") }));
   const ids = new Set(nodes.map((n) => n.id));
   const links = raw.links.filter((l) => ids.has(endId(l.source)) && ids.has(endId(l.target)));
-  return { nodes, links };
+  return { nodes, links, hidden: raw.hidden ?? [] };
+}
+
+export function splitNodeId(id: string): { type: EntityType; id: string } {
+  const [type, entityId] = id.split(":");
+  return { type: type as EntityType, id: entityId };
 }

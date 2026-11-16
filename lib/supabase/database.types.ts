@@ -666,6 +666,34 @@ export type Database = {
         };
         Relationships: [];
       };
+      graph_hidden_edges: {
+        Row: {
+          created_at: string;
+          source_id: string;
+          source_type: Database["public"]["Enums"]["entity_type"];
+          target_id: string;
+          target_type: Database["public"]["Enums"]["entity_type"];
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          source_id: string;
+          source_type: Database["public"]["Enums"]["entity_type"];
+          target_id: string;
+          target_type: Database["public"]["Enums"]["entity_type"];
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          source_id?: string;
+          source_type?: Database["public"]["Enums"]["entity_type"];
+          target_id?: string;
+          target_type?: Database["public"]["Enums"]["entity_type"];
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       import_batches: {
         Row: {
           created_at: string;

@@ -3,21 +3,22 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-type Toast = { id: number; message: string; tone: "default" | "alert" };
-type ToastApi = (message: string, tone?: Toast["tone"]) => void;
+export type ToastAction = { label: string; onAction: () => void };
+type Toast = { id: number; message: string; tone: "default" | "alert"; action?: ToastAction };
+type ToastApi = (message: string, tone?: Toast["tone"], action?: ToastAction) => void;
 
 const ToastContext = createContext<ToastApi | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null);
 
-  const show = useCallback<ToastApi>((message, tone = "default") => {
-    setToast({ id: Date.now(), message, tone });
+  const show = useCallback<ToastApi>((message, tone = "default", action) => {
+    setToast({ id: Date.now(), message, tone, action });
   }, []);
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 4000);
+    const timer = setTimeout(() => setToast(null), toast.action ? 8000 : 4000);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -28,6 +29,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toast ? (
           <div key={toast.id} className={cn("toast", toast.tone === "alert" && "toast-alert")}>
             <span>{toast.message}</span>
+            {toast.action ? (
+              <button
+                type="button"
+                className="label text-secondary hover:text-danger"
+                onClick={() => {
+                  toast.action?.onAction();
+                  setToast(null);
+                }}
+              >
+                {toast.action.label}
+              </button>
+            ) : null}
             <button type="button" className="label hover:text-danger" onClick={() => setToast(null)}>
               Fechar
             </button>
