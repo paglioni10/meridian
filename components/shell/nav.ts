@@ -8,6 +8,7 @@ export const NAV: NavItem[] = [
   { href: "/freelance", label: "Freelance", short: "Freelance", phase: "F6" },
   { href: "/infra", label: "Servidores", short: "Servidores", phase: "F7" },
   { href: "/cursos", label: "Estudos", short: "Estudos", phase: "F2" },
+  { href: "/conexoes", label: "Conexões", short: "Conexões" },
   { href: "/inbox", label: "Inbox", short: "Inbox" },
 ];
 
@@ -19,7 +20,16 @@ export const BOTTOM_NAV: NavItem[] = [
   { href: "/mais", label: "Mais", short: "Mais" },
 ];
 
-export const MORE_HREFS = ["/mais", "/projetos", "/infra", "/cursos", "/inbox", "/ajustes", "/dev"];
+export const MORE_HREFS = [
+  "/mais",
+  "/projetos",
+  "/infra",
+  "/cursos",
+  "/inbox",
+  "/conexoes",
+  "/ajustes",
+  "/dev",
+];
 
 export function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";

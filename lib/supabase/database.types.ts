@@ -384,6 +384,40 @@ export type Database = {
           },
         ];
       };
+      entity_links: {
+        Row: {
+          created_at: string;
+          id: string;
+          label: string | null;
+          source_id: string;
+          source_type: Database["public"]["Enums"]["entity_type"];
+          target_id: string;
+          target_type: Database["public"]["Enums"]["entity_type"];
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          label?: string | null;
+          source_id: string;
+          source_type: Database["public"]["Enums"]["entity_type"];
+          target_id: string;
+          target_type: Database["public"]["Enums"]["entity_type"];
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          label?: string | null;
+          source_id?: string;
+          source_type?: Database["public"]["Enums"]["entity_type"];
+          target_id?: string;
+          target_type?: Database["public"]["Enums"]["entity_type"];
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       expense_categories: {
         Row: {
           created_at: string;
@@ -983,6 +1017,31 @@ export type Database = {
           },
         ];
       };
+      obsidian_notes: {
+        Row: {
+          created_at: string;
+          id: string;
+          path: string;
+          title: string | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          path: string;
+          title?: never;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          path?: string;
+          title?: never;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       portfolio_snapshots: {
         Row: {
           by_class: NonNullable<Json>;
@@ -1433,6 +1492,32 @@ export type Database = {
       };
     };
     Views: {
+      v_graph_edges: {
+        Row: {
+          label: string | null;
+          link_id: string | null;
+          origin: string | null;
+          source_id: string | null;
+          source_type: Database["public"]["Enums"]["entity_type"] | null;
+          target_id: string | null;
+          target_type: Database["public"]["Enums"]["entity_type"] | null;
+          user_id: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [];
+      };
+      v_graph_nodes: {
+        Row: {
+          context: string | null;
+          id: string | null;
+          label: string | null;
+          state: string | null;
+          type: Database["public"]["Enums"]["entity_type"] | null;
+          user_id: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [];
+      };
       v_investment_positions: {
         Row: {
           asset_class: Database["public"]["Enums"]["asset_class"];
@@ -1648,6 +1733,7 @@ export type Database = {
           title: string;
         }[];
       };
+      graph_snapshot: { Args: { p_context?: string }; Returns: Json };
       import_statement: { Args: { p_batch_id: string; p_expenses: Json; p_incomes?: Json }; Returns: Json };
       income_series: {
         Args: { p_context?: string; p_months?: number; p_today?: string };
@@ -1676,6 +1762,15 @@ export type Database = {
           months_with_income: number;
           safe_base_cents: number;
           variable_floor_cents: number;
+        }[];
+      };
+      search_entities: {
+        Args: { p_limit?: number; p_query: string };
+        Returns: {
+          context: string;
+          id: string;
+          label: string;
+          type: Database["public"]["Enums"]["entity_type"];
         }[];
       };
       service_timeline: {
@@ -1708,6 +1803,8 @@ export type Database = {
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
       deal_stage: "lead" | "briefing" | "proposal" | "negotiation" | "won" | "lost";
+      entity_type:
+        "course" | "project" | "goal" | "income_source" | "client" | "deal" | "service" | "note" | "asset";
       expense_nature: "fixed" | "variable";
       expense_source: "manual" | "import" | "capture" | "recurring";
       goal_horizon: "short" | "medium" | "long";
@@ -1852,6 +1949,17 @@ export const Constants = {
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
       deal_stage: ["lead", "briefing", "proposal", "negotiation", "won", "lost"],
+      entity_type: [
+        "course",
+        "project",
+        "goal",
+        "income_source",
+        "client",
+        "deal",
+        "service",
+        "note",
+        "asset",
+      ],
       expense_nature: ["fixed", "variable"],
       expense_source: ["manual", "import", "capture", "recurring"],
       goal_horizon: ["short", "medium", "long"],

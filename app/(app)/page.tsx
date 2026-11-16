@@ -9,6 +9,8 @@ import { reminderStatus } from "@/features/freelance/billing";
 import { getDeals, getReminders } from "@/features/freelance/queries";
 import { getSafeBase } from "@/features/income/queries";
 import { getPortfolioSummary } from "@/features/investments/queries";
+import { getGraphSnapshot } from "@/features/graph/queries";
+import { ENTITY_LABELS } from "@/features/graph/schema";
 import { getRenewals, getServices } from "@/features/infra/queries";
 import { getBoard } from "@/features/projects/queries";
 import {
@@ -60,6 +62,18 @@ export default function HomePage() {
         >
           <Suspense fallback={<p className="label">Carregando</p>}>
             <InfraPanel />
+          </Suspense>
+        </Section>
+        <Section
+          title="Conexões"
+          action={
+            <Link href="/conexoes" className="label hover:text-danger">
+              Abrir →
+            </Link>
+          }
+        >
+          <Suspense fallback={<p className="label">Carregando</p>}>
+            <TopConnections />
           </Suspense>
         </Section>
         <Section
@@ -388,5 +402,25 @@ async function MonthBalanceStat() {
           : "Sem lançamentos no mês"
       }
     />
+  );
+}
+
+async function TopConnections() {
+  const graph = await getGraphSnapshot(await getActiveContext());
+  const top = [...graph.nodes]
+    .filter((n) => n.degree > 0)
+    .sort((a, b) => b.degree - a.degree)
+    .slice(0, 5);
+  if (top.length === 0) return <p className="label">Conecte cursos, projetos e objetivos para ver a rede.</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {top.map((n) => (
+        <Row
+          key={n.id}
+          left={`${n.label} · ${ENTITY_LABELS[n.type]}`}
+          right={<span className="font-mono text-label">{n.degree}</span>}
+        />
+      ))}
+    </div>
   );
 }
