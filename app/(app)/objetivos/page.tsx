@@ -50,6 +50,7 @@ async function Trail() {
     target_cents: g.target_cents,
     target_date: g.target_date,
     saved_cents: g.saved_cents,
+    from_investments: g.from_investments,
     pct: Number(g.pct),
     months_left: g.months_left,
     monthly_needed_cents: g.monthly_needed_cents,

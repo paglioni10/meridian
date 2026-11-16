@@ -15,6 +15,8 @@ const serverSchema = z.object({
   CRON_SECRET: optional(z.string().min(32)),
   ALERT_WEBHOOK_URL: optional(z.url()),
   ALERT_WEBHOOK_SECRET: optional(z.string().min(32)),
+  BRAPI_TOKEN: optional(z.string().min(8)),
+  COINGECKO_DEMO_KEY: optional(z.string().min(8)),
 });
 
 export const publicEnv = publicSchema.parse({

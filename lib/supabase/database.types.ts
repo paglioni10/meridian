@@ -785,6 +785,201 @@ export type Database = {
           },
         ];
       };
+      investment_assets: {
+        Row: {
+          archived_at: string | null;
+          asset_class: Database["public"]["Enums"]["asset_class"];
+          avg_price: number;
+          context: Database["public"]["Enums"]["context_kind"];
+          created_at: string;
+          current_balance_cents: number | null;
+          current_price: number | null;
+          id: string;
+          institution: string | null;
+          invested_cents: number;
+          linked_goal_id: string | null;
+          price_updated_at: string | null;
+          quantity: number;
+          quote_source: Database["public"]["Enums"]["quote_source"];
+          quote_symbol: string | null;
+          ticker_or_name: string;
+          updated_at: string;
+          user_id: string;
+          valuation_mode: Database["public"]["Enums"]["valuation_mode"];
+        };
+        ComputedFields: never;
+        Insert: {
+          archived_at?: string | null;
+          asset_class: Database["public"]["Enums"]["asset_class"];
+          avg_price?: number;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          current_balance_cents?: number | null;
+          current_price?: number | null;
+          id?: string;
+          institution?: string | null;
+          invested_cents?: number;
+          linked_goal_id?: string | null;
+          price_updated_at?: string | null;
+          quantity?: number;
+          quote_source?: Database["public"]["Enums"]["quote_source"];
+          quote_symbol?: string | null;
+          ticker_or_name: string;
+          updated_at?: string;
+          user_id?: string;
+          valuation_mode: Database["public"]["Enums"]["valuation_mode"];
+        };
+        Update: {
+          archived_at?: string | null;
+          asset_class?: Database["public"]["Enums"]["asset_class"];
+          avg_price?: number;
+          context?: Database["public"]["Enums"]["context_kind"];
+          created_at?: string;
+          current_balance_cents?: number | null;
+          current_price?: number | null;
+          id?: string;
+          institution?: string | null;
+          invested_cents?: number;
+          linked_goal_id?: string | null;
+          price_updated_at?: string | null;
+          quantity?: number;
+          quote_source?: Database["public"]["Enums"]["quote_source"];
+          quote_symbol?: string | null;
+          ticker_or_name?: string;
+          updated_at?: string;
+          user_id?: string;
+          valuation_mode?: Database["public"]["Enums"]["valuation_mode"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "investment_assets_linked_goal_id_user_id_fkey";
+            columns: ["linked_goal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "goals";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      investment_targets: {
+        Row: {
+          asset_class: Database["public"]["Enums"]["asset_class"];
+          target_pct: number;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          asset_class: Database["public"]["Enums"]["asset_class"];
+          target_pct: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          asset_class?: Database["public"]["Enums"]["asset_class"];
+          target_pct?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      investment_transactions: {
+        Row: {
+          asset_id: string;
+          created_at: string;
+          id: string;
+          notes: string | null;
+          occurred_on: string;
+          quantity: number | null;
+          total_amount_cents: number;
+          type: Database["public"]["Enums"]["investment_tx_type"];
+          unit_price: number | null;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          asset_id: string;
+          created_at?: string;
+          id?: string;
+          notes?: string | null;
+          occurred_on?: string;
+          quantity?: number | null;
+          total_amount_cents: number;
+          type: Database["public"]["Enums"]["investment_tx_type"];
+          unit_price?: number | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          asset_id?: string;
+          created_at?: string;
+          id?: string;
+          notes?: string | null;
+          occurred_on?: string;
+          quantity?: number | null;
+          total_amount_cents?: number;
+          type?: Database["public"]["Enums"]["investment_tx_type"];
+          unit_price?: number | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "investment_transactions_asset_id_user_id_fkey";
+            columns: ["asset_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "investment_assets";
+            referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "investment_transactions_asset_id_user_id_fkey";
+            columns: ["asset_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "v_investment_positions";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      portfolio_snapshots: {
+        Row: {
+          by_class: NonNullable<Json>;
+          contributions_cents: number;
+          created_at: string;
+          dividends_cents: number;
+          id: string;
+          month: string;
+          total_equity_cents: number;
+          total_invested_cents: number;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          by_class?: NonNullable<Json>;
+          contributions_cents?: number;
+          created_at?: string;
+          dividends_cents?: number;
+          id?: string;
+          month: string;
+          total_equity_cents: number;
+          total_invested_cents: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          by_class?: NonNullable<Json>;
+          contributions_cents?: number;
+          created_at?: string;
+          dividends_cents?: number;
+          id?: string;
+          month?: string;
+          total_equity_cents?: number;
+          total_invested_cents?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       projects: {
         Row: {
           context: Database["public"]["Enums"]["context_kind"];
@@ -1195,6 +1390,72 @@ export type Database = {
       };
     };
     Views: {
+      v_investment_positions: {
+        Row: {
+          asset_class: Database["public"]["Enums"]["asset_class"];
+          avg_price: number;
+          context: Database["public"]["Enums"]["context_kind"];
+          current_price: number | null;
+          equity_cents: number | null;
+          id: string;
+          institution: string | null;
+          invested_cents: number;
+          linked_goal_id: string | null;
+          price_updated_at: string | null;
+          quantity: number;
+          quote_source: Database["public"]["Enums"]["quote_source"];
+          quote_symbol: string | null;
+          ticker_or_name: string;
+          user_id: string;
+          valuation_mode: Database["public"]["Enums"]["valuation_mode"];
+        };
+        ComputedFields: never;
+        Insert: {
+          asset_class?: Database["public"]["Enums"]["asset_class"] | null;
+          avg_price?: number | null;
+          context?: Database["public"]["Enums"]["context_kind"] | null;
+          current_price?: number | null;
+          equity_cents?: never;
+          id?: string | null;
+          institution?: string | null;
+          invested_cents?: number | null;
+          linked_goal_id?: string | null;
+          price_updated_at?: string | null;
+          quantity?: number | null;
+          quote_source?: Database["public"]["Enums"]["quote_source"] | null;
+          quote_symbol?: string | null;
+          ticker_or_name?: string | null;
+          user_id?: string | null;
+          valuation_mode?: Database["public"]["Enums"]["valuation_mode"] | null;
+        };
+        Update: {
+          asset_class?: Database["public"]["Enums"]["asset_class"] | null;
+          avg_price?: number | null;
+          context?: Database["public"]["Enums"]["context_kind"] | null;
+          current_price?: number | null;
+          equity_cents?: never;
+          id?: string | null;
+          institution?: string | null;
+          invested_cents?: number | null;
+          linked_goal_id?: string | null;
+          price_updated_at?: string | null;
+          quantity?: number | null;
+          quote_source?: Database["public"]["Enums"]["quote_source"] | null;
+          quote_symbol?: string | null;
+          ticker_or_name?: string | null;
+          user_id?: string | null;
+          valuation_mode?: Database["public"]["Enums"]["valuation_mode"] | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "investment_assets_linked_goal_id_user_id_fkey";
+            columns: ["linked_goal_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "goals";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       v_renewals_due: {
         Row: {
           alert_days: number[];
@@ -1327,6 +1588,7 @@ export type Database = {
           achieved_at: string;
           context: Database["public"]["Enums"]["context_kind"];
           description: string;
+          from_investments: boolean;
           horizon: Database["public"]["Enums"]["goal_horizon"];
           id: string;
           is_late: boolean;
@@ -1362,6 +1624,7 @@ export type Database = {
         };
         Returns: number;
       };
+      portfolio_summary: { Args: { p_context?: string; p_month?: string }; Returns: Json };
       safe_monthly_base: {
         Args: { p_context?: string; p_months?: number; p_today?: string };
         Returns: {
@@ -1396,6 +1659,7 @@ export type Database = {
         | "credit_low"
         | "tls_due"
         | "billing_due";
+      asset_class: "cash" | "fixed_income" | "equity" | "international" | "crypto";
       check_method: "http" | "keyword" | "heartbeat" | "manual";
       context_kind: "personal" | "work" | "freelance";
       course_status: "backlog" | "in_progress" | "paused" | "done" | "dropped";
@@ -1406,13 +1670,16 @@ export type Database = {
       goal_status: "active" | "paused" | "achieved" | "archived";
       import_format: "ofx" | "nubank_account_csv" | "nubank_card_csv";
       income_kind: "guaranteed" | "variable";
+      investment_tx_type: "contribution" | "withdrawal" | "dividend" | "yield";
       priority_level: "low" | "medium" | "high" | "critical";
       project_status: "active" | "on_hold" | "done" | "archived";
+      quote_source: "brapi" | "coingecko" | "manual";
       reminder_recurrence: "once" | "monthly";
       renewal_kind: "domain" | "hosting" | "license" | "certificate" | "subscription" | "credit";
       service_kind: "vps" | "automation" | "api" | "website" | "database" | "other";
       service_state: "up" | "degraded" | "down" | "unknown";
       task_status: "todo" | "doing" | "done";
+      valuation_mode: "quote" | "balance";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1535,6 +1802,7 @@ export const Constants = {
         "tls_due",
         "billing_due",
       ],
+      asset_class: ["cash", "fixed_income", "equity", "international", "crypto"],
       check_method: ["http", "keyword", "heartbeat", "manual"],
       context_kind: ["personal", "work", "freelance"],
       course_status: ["backlog", "in_progress", "paused", "done", "dropped"],
@@ -1545,13 +1813,16 @@ export const Constants = {
       goal_status: ["active", "paused", "achieved", "archived"],
       import_format: ["ofx", "nubank_account_csv", "nubank_card_csv"],
       income_kind: ["guaranteed", "variable"],
+      investment_tx_type: ["contribution", "withdrawal", "dividend", "yield"],
       priority_level: ["low", "medium", "high", "critical"],
       project_status: ["active", "on_hold", "done", "archived"],
+      quote_source: ["brapi", "coingecko", "manual"],
       reminder_recurrence: ["once", "monthly"],
       renewal_kind: ["domain", "hosting", "license", "certificate", "subscription", "credit"],
       service_kind: ["vps", "automation", "api", "website", "database", "other"],
       service_state: ["up", "degraded", "down", "unknown"],
       task_status: ["todo", "doing", "done"],
+      valuation_mode: ["quote", "balance"],
     },
   },
 } as const;

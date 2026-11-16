@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useEffectEvent, useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -50,6 +51,7 @@ export type GoalItem = {
   target_cents: number | null;
   target_date: string | null;
   saved_cents: number;
+  from_investments: boolean;
   pct: number;
   months_left: number | null;
   monthly_needed_cents: number | null;
@@ -442,15 +444,21 @@ function GoalCard({
       <div className="-ml-2 flex flex-wrap items-center">
         {!done ? (
           <>
-            <Button
-              variant="ghost"
-              className="min-h-9"
-              disabled={pending}
-              onClick={() => setMoving("deposit")}
-            >
-              Aportar
-            </Button>
-            {goal.saved_cents > 0 ? (
+            {goal.from_investments ? (
+              <Link href="/financas/investimentos" className="label px-2 hover:text-danger">
+                Saldo vindo dos investimentos →
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                className="min-h-9"
+                disabled={pending}
+                onClick={() => setMoving("deposit")}
+              >
+                Aportar
+              </Button>
+            )}
+            {goal.saved_cents > 0 && !goal.from_investments ? (
               <Button
                 variant="ghost"
                 className="min-h-9"

@@ -8,6 +8,7 @@ import { getExpenses } from "@/features/expenses/queries";
 import { reminderStatus } from "@/features/freelance/billing";
 import { getDeals, getReminders } from "@/features/freelance/queries";
 import { getSafeBase } from "@/features/income/queries";
+import { getPortfolioSummary } from "@/features/investments/queries";
 import { getRenewals, getServices } from "@/features/infra/queries";
 import { getBoard } from "@/features/projects/queries";
 import {
@@ -34,6 +35,9 @@ export default function HomePage() {
         <Stat label="Saldo do mês" value="—" hint="F4" />
         <Suspense fallback={<Stat label="Base segura" value="—" />}>
           <SafeBaseStat />
+        </Suspense>
+        <Suspense fallback={<Stat label="Patrimônio" value="—" />}>
+          <EquityStat />
         </Suspense>
         <Suspense fallback={<Stat label="Pipeline aberto" value="—" />}>
           <PipelineStat />
@@ -345,5 +349,22 @@ async function BillingPanel() {
         />
       ))}
     </div>
+  );
+}
+
+async function EquityStat() {
+  const context = await getActiveContext();
+  const s = await getPortfolioSummary(context, currentMonthISO());
+  const sign = s.result_cents > 0 ? "+" : s.result_cents < 0 ? "−" : "";
+  return (
+    <Stat
+      label="Patrimônio"
+      value={s.equity_cents ? formatBRL(s.equity_cents) : "—"}
+      hint={
+        s.equity_cents
+          ? `Resultado ${sign}${formatBRL(Math.abs(s.result_cents))}`
+          : "Cadastre seus investimentos"
+      }
+    />
   );
 }
